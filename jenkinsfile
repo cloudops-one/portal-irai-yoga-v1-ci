@@ -1,0 +1,128 @@
+pipeline {
+    agent {
+        kubernetes {
+            label 'node-docker-builder'
+            defaultContainer 'node'
+            yaml """
+apiVersion: v1
+kind: Pod
+spec:
+  containers:
+    - name: node
+      image: node:20.19.3
+      command:
+        - sh
+        - -c
+        - |
+          apt-get update && apt-get install -y git && cat
+      tty: true
+      volumeMounts:
+        - mountPath: /var/run
+          name: docker-sock
+    - name: docker
+      image: docker:24.0.7-cli
+      command:
+        - sh
+        - -c
+        - |
+          while ! curl -s http://0.0.0.0:2375/version; do echo "Waiting for Docker daemon..."; sleep 2; done
+          cat
+      tty: true
+      volumeMounts:
+        - mountPath: /var/run
+          name: docker-sock
+    - name: dind
+      image: docker:24.0.7-dind
+      securityContext:
+        privileged: true
+      args: ["--host=tcp://0.0.0.0:2375", "--host=unix:///var/run/docker.sock"]
+      volumeMounts:
+        - mountPath: /var/run
+          name: docker-sock
+  volumes:
+    - name: docker-sock
+      emptyDir: {}
+"""
+        }
+    }
+    environment {
+        DOCKER_IMAGE = "registry.gitlab.com/cloudops.one/irai-yoga-v1/irai-yoga-v1-admin"
+        DOCKER_REGISTRY = "registry.gitlab.com"
+        GIT_URL = "https://github.com/irai-yoga-v1/admin.git"
+        GIT_CREDENTIALS_ID = "Git-ClouOps"
+        DOCKER_CREDENTIALS_ID = "Docker-Registry"
+        NODE_OPTIONS = "--max-old-space-size=3400"
+        BUILD_TIMESTAMP = "${new Date().format('yyyyMMdd-HHmmss')}" // Corrected the format here
+        VITE_API_BASE_URL = "https://server.preview.v1.irai.yoga/api/"
+    }
+    stages {
+        stage('Checkout Code') {
+            steps {
+                script {
+                    def branchName = env.GIT_BRANCH ?: 'main'
+                    echo "Checking out branch: ${branchName}"
+                    git credentialsId: "${GIT_CREDENTIALS_ID}", url: "${GIT_URL}", branch: branchName
+                }
+            }
+        }
+        stage('Verify Files') {
+            steps {
+                sh 'ls -la'
+            }
+        }
+        stage('Install Dependencies') {
+            steps {
+                // Install dependencies and handle conflicts
+                sh 'npm install --legacy-peer-deps'
+            }
+        }
+    
+        
+        stage('Lint') {
+            steps {
+                sh 'npm run lint --fix || true'
+            }
+        }
+        stage('Run Tests') {
+            steps {
+                sh 'npm run test -- --passWithNoTests || true'
+            }
+        }
+        stage('Build Frontend') {
+            steps {
+                script {
+                    echo "Building frontend with VITE_API_BASE_URL=${env.VITE_API_BASE_URL}"
+                    sh 'npm run build'
+                }
+            }
+        }
+        stage('Build & Push Docker Image') {
+            steps {
+                container('docker') {
+                    script {
+                        def branchName = env.GIT_BRANCH ?: 'main'
+                        def dockerTag = branchName.toLowerCase().replaceAll('/', '-')
+                        def fullImage = "${DOCKER_IMAGE}:${dockerTag}"
+                        def latestImage = "${DOCKER_IMAGE}:latest"
+                        echo "🔨 Building Docker image: ${fullImage}"
+
+                        withCredentials([usernamePassword(credentialsId: env.DOCKER_CREDENTIALS_ID, usernameVariable: 'REG_USERNAME', passwordVariable: 'REG_PASSWORD')]) {
+                            sh """
+                                echo "$REG_PASSWORD" | docker login ${DOCKER_REGISTRY} -u "$REG_USERNAME" --password-stdin
+                                docker build --build-arg VITE_API_BASE_URL=${env.VITE_API_BASE_URL} -t ${fullImage} .
+                                docker push ${fullImage}
+                            """
+                            if (branchName == 'main') {
+                                sh """
+                                    docker tag ${fullImage} ${latestImage}
+                                    docker push ${latestImage}
+                                """
+                            }
+                            sh "docker logout ${DOCKER_REGISTRY}"
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

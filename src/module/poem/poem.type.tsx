@@ -1,0 +1,27 @@
+export type PoemType = {
+  poemId: string;
+  orgId: string;
+  poemName: string;
+  poemDescription: string;
+  poemStorageId: string;
+  poemExternalUrl: string;
+  poemStorageUrl: string;
+  poemIconStorageId: string | null;
+  poemIconStorageUrl: string;
+  poemIconExternalUrl: string;
+  poemBannerStorageId: string | null;
+  poemBannerStorageUrl: string;
+  poemBannerExternalUrl: string;
+  poemText: string;
+  poemAuthor: string;
+  poemstatus: string;
+  poemDuration: number;
+  poemViews: number;
+  poemTags: string[];
+  createdBy: string;
+  createdByName: string;
+  createdAt: string;
+  updatedBy: string;
+  updatedByName: string;
+  updatedAt: string;
+};

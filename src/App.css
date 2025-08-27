@@ -1,0 +1,33 @@
+#root {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
+}
+
+.event-description h1,
+.event-description h2,
+.event-description h3 {
+  margin: 1em 0 0.5em 0;
+  font-weight: bold;
+}
+.event-description p {
+  margin: 0 0 1em 0;
+  line-height: 1.7;
+}
+.event-description ul,
+.event-description ol {
+  margin-left: 2em;
+  margin-bottom: 1em;
+}
+.event-description li {
+  margin-bottom: 0.5em;
+}
+.event-description b,
+.event-description strong {
+  font-weight: bold;
+}
+.event-description i,
+.event-description em {
+  font-style: italic;
+}
