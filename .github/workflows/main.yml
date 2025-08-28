@@ -1,0 +1,61 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: ['**']  # Trigger on all branch pushes
+    tags: ['v*']      # Trigger on version tags (v1.0.0, v2.1.3, etc.)
+  pull_request:
+    branches: [main]  # Trigger on PRs to main branch
+
+jobs:
+  call-shared-pipeline:
+    name: Call Shared CI/CD Pipeline
+    runs-on: ubuntu-latest
+    
+    # Determine which shared workflow to call based on project type
+    strategy:
+      matrix:
+        include:
+          - project: 'irai-yoga-v1-server'
+            type: 'java-spring'
+            workflow: 'java-pipeline.yml'
+          - project: 'irai-yoga-v1-portal'
+            type: 'react'
+            workflow: 'react-pipeline.yml'
+          - project: 'terv-pro-v1-frontend'
+            type: 'react'
+            workflow: 'react-pipeline.yml'
+          # Add more project mappings as needed
+
+    # Find the correct workflow for this repository
+    if: ${{ matrix.project == github.event.repository.name }}
+    
+    steps:
+      - name: Determine environment type
+        id: determine-environment
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            echo "environment=live" >> $GITHUB_OUTPUT
+          elif [[ "$GITHUB_REF" == refs/heads/main ]]; then
+            echo "environment=stage" >> $GITHUB_OUTPUT
+          else
+            echo "environment=preview" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Invoke Shared Pipeline
+        uses: cloudops-one/devops-ci/.github/workflows/${{ matrix.workflow }}@main
+        with:
+          project_type: ${{ matrix.type }}
+          environment: ${{ steps.determine-environment.outputs.environment }}
+          project_name: ${{ github.event.repository.name }}
+          component: ${{ fromJSON('{"irai-yoga-v1-server":"server","irai-yoga-v1-portal":"portal","terv-pro-v1-frontend":"frontend"}')[github.event.repository.name] }}
+          domain_config: |
+            {
+              "preview_domain": "irai.yoga",
+              "stage_domain": "irai.yoga", 
+              "live_domain": "irai.yoga"
+            }
+          java_version: '17'
+          build_tool: 'gradle'
+          node_version: '18'
+        secrets: inherit
