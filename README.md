@@ -17,7 +17,7 @@ This portal allows administrators to efficiently manage and oversee the activiti
 
 ---
 
-## 🔧 Installation & Setup
+## 🔧 Installation & Setup.
 
 Follow the steps below to run the project locally on your machine:
 
