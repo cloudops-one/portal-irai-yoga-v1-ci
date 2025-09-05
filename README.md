@@ -5,7 +5,7 @@ This portal allows administrators to efficiently manage and oversee the activiti
 
 ---
 
-## 🚀 Features..
+## 🚀 Features....
 
 - 🔥 Responsive Admin Dashboard
 - 🌐 Zustand State Management
