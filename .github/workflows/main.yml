@@ -46,4 +46,3 @@ jobs:
       build_tool: 'gradle'
       node_version: '18'
     secrets: inherit
-    token: ${{ secrets.CI_TOKEN }}
