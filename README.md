@@ -2,7 +2,7 @@
 
 Welcome to the *Irai Yoga*, a powerful web-based application built using **Vite**, **React**, and **TypeScript**.
 This portal allows administrators to efficiently manage and oversee the activities of the Irai Yoga Platform..
- 
+
 ---
 
 ## 🚀 Features....
