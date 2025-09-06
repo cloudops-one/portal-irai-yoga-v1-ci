@@ -30,7 +30,7 @@ jobs:
 
   call-shared-pipeline:
     needs: determine-environment
-    uses: cloudops-one/devops-ci/.github/actions/build-and-test@main
+    uses: ./.github/workflows/main-pipeline.yml
     with:
       project_type: 'java-spring'  # Change to 'react' for React projects
       environment: ${{ needs.determine-environment.outputs.environment }}
