@@ -28,22 +28,13 @@ jobs:
             echo "environment=preview" >> $GITHUB_OUTPUT
           fi
 
-  call-shared-pipeline:
+  build-and-test:
     needs: determine-environment
-    uses: ./.github/actions/build-and-test
-    with:
-      project_type: 'java-spring'
-      environment: ${{ needs.determine-environment.outputs.environment }}
-      project_name: 'irai-yoga-v1'
-      component: 'server'
-      domain_config: |
-        {
-          "preview_domain": "irai.yoga",
-          "stage_domain": "irai.yoga",
-          "live_domain": "irai.yoga"
-        }
-      java_version: '17'
-      build_tool: 'gradle'
-      node_version: '18'
-    secrets: inherit
-  # other jobs here, but DO NOT call this workflow using `uses:` inside itself!
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: cloudops-one/checkout@v4
+      - name: Build and Test
+        uses: ./.github/actions/build-and-test
+        with:
+          node_version: '18'
