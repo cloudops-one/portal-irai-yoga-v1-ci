@@ -51,7 +51,7 @@ jobs:
     steps:
       - name: Validate branch name
         id: validation
-        uses: devops-ci/.github/actions/validate-branch@main
+        uses: cloudops-one/devops-ci/.github/actions/validate-branch@main
         with:
           github_ref: ${{ github.ref }}
 
@@ -64,7 +64,7 @@ jobs:
         uses: cloudops-one/checkout@v4
         
       - name: Build and test
-        uses: devops-ci/.github/actions/build-and-test@main
+        uses: cloudops-one/devops-ci/.github/actions/build-and-test@main
         with:
           project_type: 'react'
           node_version: '18'
@@ -79,7 +79,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Security scanning
-        uses: devops-ci/.github/actions/security-scan@main
+        uses: cloudops-one/devops-ci/.github/actions/security-scan@main
         with:
           project_type: 'react'
           snyk_token: ${{ secrets.SNYK_TOKEN }}
@@ -89,7 +89,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Build and push Docker image
-        uses: devops-ci/.github/actions/docker-operations@main
+        uses: cloudops-one/devops-ci/.github/actions/docker-operations@main
         with:
           operation: "build-push"
           harbor_registry: ${{ secrets.HARBOR_REGISTRY }}
@@ -106,14 +106,14 @@ jobs:
       name: ${{ needs.determine-environment.outputs.environment }}
     steps:
       - name: Setup environment
-        uses: devops-ci/.github/actions/setup-environment@main
+        uses: cloudops-one/devops-ci/.github/actions/setup-environment@main
         with:
           environment: ${{ needs.determine-environment.outputs.environment }}
           aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
       - name: Deploy to Kubernetes
-        uses: devops-ci/.github/actions/k8s-deploy@main
+        uses: cloudops-one/devops-ci/.github/actions/k8s-deploy@main
         with:
           environment: ${{ needs.determine-environment.outputs.environment }}
           project_name: 'your-project-name'
@@ -124,7 +124,7 @@ jobs:
           deploy_supporting_services: false
 
       - name: DNS management (if needed)
-        uses: devops-ci/.github/actions/dns-management@main
+        uses: cloudops-one/devops-ci/.github/actions/dns-management@main
         with:
           environment: ${{ needs.determine-environment.outputs.environment }}
           component: 'your-component'
@@ -144,7 +144,7 @@ jobs:
           fi
 
       - name: Notify deployment
-        uses: devops-ci/.github/actions/notify@main
+        uses: cloudops-one/devops-ci/.github/actions/notify@main
         with:
           webhook_url: ${{ steps.webhook.outputs.webhook_url }}
           message: "✅ Deployment successful to ${{ needs.determine-environment.outputs.environment }}"
