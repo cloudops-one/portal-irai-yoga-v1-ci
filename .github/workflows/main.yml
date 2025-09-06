@@ -34,9 +34,6 @@ permissions:
   actions: read
   contents: read
 
-on:
-  workflow_call:
-  
 jobs:
   determine-environment:
     runs-on: ubuntu-latest
@@ -54,21 +51,4 @@ jobs:
             echo "environment=preview" >> $GITHUB_OUTPUT
           fi
 
-  call-shared-pipeline:
-    needs: determine-environment
-    uses: ./.github/workflows/main.yml
-    with:
-      project_type: 'java-spring'  # Change to 'react' for React projects
-      environment: ${{ needs.determine-environment.outputs.environment }}
-      project_name: 'irai-yoga-v1'  # Update with your project name
-      component: 'server'  # Change to 'portal', 'frontend', etc.
-      domain_config: |
-        {
-          "preview_domain": "irai.yoga",
-          "stage_domain": "irai.yoga",
-          "live_domain": "irai.yoga"
-        }
-      java_version: '17'
-      build_tool: 'gradle'
-      node_version: '18'
-    secrets: inherit
+  # other jobs here, but DO NOT call this workflow using `uses:` inside itself!
