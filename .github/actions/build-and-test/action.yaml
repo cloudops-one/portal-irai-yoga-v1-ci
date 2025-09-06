@@ -12,7 +12,7 @@ runs:
   steps:
     # Step 1: Checkout the repository that triggered the workflow
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: cloudops-one/checkout@v4
 
     # Step 2: Use your organization's custom setup-node action
     - name: Setup Node.js
