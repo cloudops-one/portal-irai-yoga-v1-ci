@@ -6,10 +6,11 @@ inputs:
     required: true
 runs:
   using: "composite"
-  steps:
-    - name: Setup Node.js   
-      uses: cloudops-one/actions@v4
-      uses: cloudops-one/setup-node@v4
+ steps:
+  - name: Checkout code
+    uses: cloudops-one/actions@v4       # For your fork of checkout
+  - name: Setup Node.js
+    uses: cloudops-one/setup-node@v4    # For your fork of setup-node
       with:
         node-version: ${{ inputs.node_version }}
 
