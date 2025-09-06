@@ -35,12 +35,8 @@ permissions:
   contents: read
 
 on:
-  push:
-    branches: ['**']
-    tags: ['v*']
-  pull_request:
-    branches: [main]
-
+  workflow_call:
+  
 jobs:
   determine-environment:
     runs-on: ubuntu-latest
