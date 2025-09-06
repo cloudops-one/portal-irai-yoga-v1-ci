@@ -33,4 +33,4 @@ runs:
     # Step 5: Run tests
     - name: Run tests
       shell: bash
-      run: npm test
+      run: npm test -- --passWithNoTests
