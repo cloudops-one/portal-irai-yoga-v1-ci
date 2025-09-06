@@ -1,36 +1,151 @@
-name: 'Build and Test'
-description: 'Build and test the TypeScript application'
+name: CI/CD Pipeline
 
-inputs:
-  node_version:
-    description: 'The version of Node.js to use'
-    required: false
-    default: '20'
+permissions:
+  actions: read
+  contents: read
 
-runs:
-  using: "composite"
-  steps:
-    # Step 1: Checkout the repository that triggered the workflow
-    - name: Checkout repository
-      uses: cloudops-one/checkout@v4
+on:
+  push:
+    branches: ['**']
+    tags: ['v*']
+  pull_request:
+    branches: [main]
 
-    # Step 2: Use your organization's custom setup-node action
-    - name: Setup Node.js
-      uses: cloudops-one/setup-node@v1 # Replace 'your-org-name' with your actual GitHub Org name
-      with:
-        node-version: ${{ inputs.node-version }}
+jobs:
+  determine-environment:
+    runs-on: ubuntu-latest
+    outputs:
+      environment: ${{ steps.env.outputs.environment }}
+      docker_tag: ${{ steps.tag.outputs.tag }}
+    steps:
+      - name: Determine environment
+        id: env
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            echo "environment=live" >> $GITHUB_OUTPUT
+          elif [[ "$GITHUB_REF" == refs/heads/main ]]; then
+            echo "environment=stage" >> $GITHUB_OUTPUT
+          else
+            echo "environment=preview" >> $GITHUB_OUTPUT
+          fi
 
-    # Step 3: Install dependencies
-    - name: Install dependencies
-      shell: bash
-      run: npm install
+      - name: Determine docker tag
+        id: tag
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            TAG="${GITHUB_REF#refs/tags/}"
+            echo "tag=$TAG" >> $GITHUB_OUTPUT
+          elif [[ "$GITHUB_REF" == refs/heads/main ]]; then
+            echo "tag=stage" >> $GITHUB_OUTPUT
+          else
+            BRANCH_NAME="${GITHUB_REF#refs/heads/}"
+            SANITIZED_BRANCH=$(echo "$BRANCH_NAME" | sed 's/[^a-zA-Z0-9-]/-/g' | tr '[:upper:]' '[:lower:]')
+            echo "tag=$SANITIZED_BRANCH" >> $GITHUB_OUTPUT
+          fi
 
-    # Step 4: Run the build script
-    - name: Build application
-      shell: bash
-      run: npm run build
+  validate-branch:
+    needs: determine-environment
+    runs-on: ubuntu-latest
+    outputs:
+      branch_valid: ${{ steps.validation.outputs.valid }}
+    steps:
+      - name: Validate branch name
+        id: validation
+        uses: cloudops-one/devops-ci/.github/actions/validate-branch@main
+        with:
+          github_ref: ${{ github.ref }}
 
-    # Step 5: Run tests
-    - name: Run tests
-      shell: bash
-      run: npm test -- --passWithNoTests
+  build-and-test:
+    needs: [determine-environment, validate-branch]
+    if: needs.validate-branch.outputs.branch_valid == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: cloudops-one/checkout@v4
+        
+      - name: Build and test
+        uses: cloudops-one/devops-ci/.github/actions/build-and-test@main
+        with:
+          project_type: 'react'
+          node_version: '18'
+          java_version: '11'
+          build_tool: 'maven'
+          sonarqube_token: ${{ secrets.SONARQUBE_TOKEN }}
+          sonarqube_url: ${{ secrets.SONARQUBE_URL }}
+          snyk_token: ${{ secrets.SNYK_TOKEN }}
+
+  security-scan:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Security scanning
+        uses: cloudops-one/devops-ci/.github/actions/security-scan@main
+        with:
+          project_type: 'react'
+          snyk_token: ${{ secrets.SNYK_TOKEN }}
+
+  docker-build-push:
+    needs: [determine-environment, build-and-test, security-scan]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Build and push Docker image
+        uses: cloudops-one/devops-ci/.github/actions/docker-operations@main
+        with:
+          operation: "build-push"
+          harbor_registry: ${{ secrets.HARBOR_REGISTRY }}
+          harbor_username: ${{ secrets.HARBOR_USERNAME }}
+          harbor_password: ${{ secrets.HARBOR_PASSWORD }}
+          project_name: 'your-project-name'
+          component: 'your-component'
+          docker_tag: ${{ needs.determine-environment.outputs.docker_tag }}
+
+  deploy:
+    needs: [determine-environment, docker-build-push]
+    runs-on: ubuntu-latest
+    environment: 
+      name: ${{ needs.determine-environment.outputs.environment }}
+    steps:
+      - name: Setup environment
+        uses: cloudops-one/devops-ci/.github/actions/setup-environment@main
+        with:
+          environment: ${{ needs.determine-environment.outputs.environment }}
+          aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+      - name: Deploy to Kubernetes
+        uses: cloudops-one/devops-ci/.github/actions/k8s-deploy@main
+        with:
+          environment: ${{ needs.determine-environment.outputs.environment }}
+          project_name: 'your-project-name'
+          component: 'your-component'
+          docker_tag: ${{ needs.determine-environment.outputs.docker_tag }}
+          kubeconfig: ${{ secrets.KUBECONFIG }}
+          domain_config: ${{ vars.DOMAIN_CONFIG }}
+          deploy_supporting_services: false
+
+      - name: DNS management (if needed)
+        uses: cloudops-one/devops-ci/.github/actions/dns-management@main
+        with:
+          environment: ${{ needs.determine-environment.outputs.environment }}
+          component: 'your-component'
+          domain_config: ${{ vars.DOMAIN_CONFIG }}
+          aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+      - name: Determine webhook URL
+        id: webhook
+        run: |
+          if [ "${{ needs.determine-environment.outputs.environment }}" = "preview" ]; then
+            echo "webhook_url=${{ secrets.ZOHO_CLIQ_WEBHOOK_PREVIEW }}" >> $GITHUB_OUTPUT
+          elif [ "${{ needs.determine-environment.outputs.environment }}" = "stage" ]; then
+            echo "webhook_url=${{ secrets.ZOHO_CLIQ_WEBHOOK_STAGE }}" >> $GITHUB_OUTPUT
+          else
+            echo "webhook_url=${{ secrets.ZOHO_CLIQ_WEBHOOK_LIVE }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Notify deployment
+        uses: cloudops-one/devops-ci/.github/actions/notify@main
+        with:
+          webhook_url: ${{ steps.webhook.outputs.webhook_url }}
+          message: "✅ Deployment successful to ${{ needs.determine-environment.outputs.environment }}"
+          environment: ${{ needs.determine-environment.outputs.environment }}
