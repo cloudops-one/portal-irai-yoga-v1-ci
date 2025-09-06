@@ -1,27 +1,36 @@
-name: "Build and Test"
-description: "Run build and test steps for frontend project"
+name: 'Build and Test'
+description: 'Build and test the TypeScript application'
+
 inputs:
-  node_version:
-    description: "Node.js version"
-    required: true
+  node-version:
+    description: 'The version of Node.js to use'
+    required: false
+    default: '20'
+
 runs:
   using: "composite"
- steps:
-  - name: Checkout code
-    uses: cloudops-one/actions@v4       # For your fork of checkout
-  - name: Setup Node.js
-    uses: cloudops-one/setup-node@v4    # For your fork of setup-node
+  steps:
+    # Step 1: Checkout the repository that triggered the workflow
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    # Step 2: Use your organization's custom setup-node action
+    - name: Setup Node.js
+      uses: cloudops-one/setup-node@v1 # Replace 'your-org-name' with your actual GitHub Org name
       with:
-        node-version: ${{ inputs.node_version }}
+        node-version: ${{ inputs.node-version }}
 
+    # Step 3: Install dependencies
     - name: Install dependencies
+      shell: bash
       run: npm ci
-      shell: bash
 
-    - name: Build
+    # Step 4: Run the build script
+    - name: Build application
+      shell: bash
       run: npm run build
-      shell: bash
 
-    - name: Test
-      run: npm test
+    # Step 5: Run tests
+    - name: Run tests
       shell: bash
+      run: npm test
