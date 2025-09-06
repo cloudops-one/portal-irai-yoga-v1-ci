@@ -23,7 +23,7 @@ runs:
     # Step 3: Install dependencies
     - name: Install dependencies
       shell: bash
-      run: npm ci
+      run: npm install
 
     # Step 4: Run the build script
     - name: Build application
