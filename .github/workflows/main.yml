@@ -51,7 +51,7 @@ jobs:
     steps:
       - name: Validate branch name
         id: validation
-        uses: your-org/your-centralized-repo/.github/actions/validate-branch@main
+        uses: devops-ci/.github/actions/validate-branch@main
         with:
           github_ref: ${{ github.ref }}
 
@@ -64,10 +64,12 @@ jobs:
         uses: cloudops-one/checkout@v4
         
       - name: Build and test
-        uses: your-org/your-centralized-repo/.github/actions/build-and-test@main
+        uses: devops-ci/.github/actions/build-and-test@main
         with:
-          project_type: 'react'  # Change based on your project
+          project_type: 'react'  # Change to 'java-spring', 'data', or 'e2e' as needed
           node_version: '18'
+          java_version: '11'
+          build_tool: 'maven'
           sonarqube_token: ${{ secrets.SONARQUBE_TOKEN }}
           sonarqube_url: ${{ secrets.SONARQUBE_URL }}
           snyk_token: ${{ secrets.SNYK_TOKEN }}
@@ -77,9 +79,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Security scanning
-        uses: your-org/your-centralized-repo/.github/actions/security-scan@main
+        uses: devops-ci/.github/actions/security-scan@main
         with:
-          project_type: 'react'
+          project_type: 'react'  # Change based on your project
           snyk_token: ${{ secrets.SNYK_TOKEN }}
 
   docker-build-push:
@@ -87,7 +89,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Build and push Docker image
-        uses: your-org/your-centralized-repo/.github/actions/docker-operations@main
+        uses: devops-ci/.github/actions/docker-operations@main
         with:
           operation: "build-push"
           harbor_registry: ${{ secrets.HARBOR_REGISTRY }}
@@ -103,8 +105,15 @@ jobs:
     environment: 
       name: ${{ needs.determine-environment.outputs.environment }}
     steps:
-      - name: Deploy to environment
-        uses: your-org/your-centralized-repo/.github/actions/k8s-deploy@main
+      - name: Setup environment
+        uses: devops-ci/.github/actions/setup-environment@main
+        with:
+          environment: ${{ needs.determine-environment.outputs.environment }}
+          aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+      - name: Deploy to Kubernetes
+        uses: devops-ci/.github/actions/k8s-deploy@main
         with:
           environment: ${{ needs.determine-environment.outputs.environment }}
           project_name: 'your-project-name'
@@ -112,12 +121,24 @@ jobs:
           docker_tag: ${{ needs.determine-environment.outputs.docker_tag }}
           kubeconfig: ${{ secrets.KUBECONFIG }}
           domain_config: ${{ vars.DOMAIN_CONFIG }}  # Store as variable or secret
+          deploy_supporting_services: false
+
+      - name: DNS management (if needed)
+        uses: devops-ci/.github/actions/dns-management@main
+        with:
+          environment: ${{ needs.determine-environment.outputs.environment }}
+          component: 'your-component'
+          domain_config: ${{ vars.DOMAIN_CONFIG }}
           aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
       - name: Notify deployment
-        uses: your-org/your-centralized-repo/.github/actions/notify@main
+        uses: devops-ci/.github/actions/notify@main
         with:
-          webhook_url: ${{ format('secrets.ZOHO_CLIQ_WEBHOOK_{0}', needs.determine-environment.outputs.environment) }}
+          webhook_url: ${{ 
+            needs.determine-environment.outputs.environment == 'preview' && secrets.ZOHO_CLIQ_WEBHOOK_PREVIEW ||
+            needs.determine-environment.outputs.environment == 'stage' && secrets.ZOHO_CLIQ_WEBHOOK_STAGE ||
+            needs.determine-environment.outputs.environment == 'live' && secrets.ZOHO_CLIQ_WEBHOOK_LIVE
+          }}
           message: "✅ Deployment successful to ${{ needs.determine-environment.outputs.environment }}"
           environment: ${{ needs.determine-environment.outputs.environment }}
