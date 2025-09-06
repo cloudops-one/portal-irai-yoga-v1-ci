@@ -1,38 +1,15 @@
-on:
-  workflow_call:
-    inputs:
-      project_type:
-        required: true
-        type: string
-      environment:
-        required: true
-        type: string
-      project_name:
-        required: true
-        type: string
-      component:
-        required: true
-        type: string
-      domain_config:
-        required: true
-        type: string
-      java_version:
-        required: true
-        type: string
-      build_tool:
-        required: true
-        type: string
-      node_version:
-        required: true
-        type: string
-    secrets:
-      inherit: true
-
 name: CI/CD Pipeline
 
 permissions:
   actions: read
   contents: read
+
+on:
+  push:
+    branches: ['**']
+    tags: ['v*']
+  pull_request:
+    branches: [main]
 
 jobs:
   determine-environment:
@@ -51,4 +28,22 @@ jobs:
             echo "environment=preview" >> $GITHUB_OUTPUT
           fi
 
+  call-shared-pipeline:
+    needs: determine-environment
+    uses: .github/workflows/main-pipeline.yml
+    with:
+      project_type: 'java-spring'
+      environment: ${{ needs.determine-environment.outputs.environment }}
+      project_name: 'irai-yoga-v1'
+      component: 'server'
+      domain_config: |
+        {
+          "preview_domain": "irai.yoga",
+          "stage_domain": "irai.yoga",
+          "live_domain": "irai.yoga"
+        }
+      java_version: '17'
+      build_tool: 'gradle'
+      node_version: '18'
+    secrets: inherit
   # other jobs here, but DO NOT call this workflow using `uses:` inside itself!
