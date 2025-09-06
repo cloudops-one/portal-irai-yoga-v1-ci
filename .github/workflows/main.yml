@@ -1,3 +1,33 @@
+on:
+  workflow_call:
+    inputs:
+      project_type:
+        required: true
+        type: string
+      environment:
+        required: true
+        type: string
+      project_name:
+        required: true
+        type: string
+      component:
+        required: true
+        type: string
+      domain_config:
+        required: true
+        type: string
+      java_version:
+        required: true
+        type: string
+      build_tool:
+        required: true
+        type: string
+      node_version:
+        required: true
+        type: string
+    secrets:
+      inherit: true
+
 name: CI/CD Pipeline
 
 permissions:
