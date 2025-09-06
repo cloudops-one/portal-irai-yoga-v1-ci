@@ -28,7 +28,6 @@ jobs:
           else
             echo "environment=preview" >> $GITHUB_OUTPUT
           fi
-
       - name: Determine docker tag
         id: tag
         run: |
@@ -55,7 +54,6 @@ jobs:
           BRANCH_NAME="${GITHUB_REF#refs/heads/}"
           TAG_NAME="${GITHUB_REF#refs/tags/}"
           BRANCH_REGEX="^(feat|fix|chore|test|docs|refactor|ci|style|perf|build)/[0-9]{1,5}_[a-z0-9]+(-[a-z0-9]+)*$"
-
           if [[ "$GITHUB_REF" == refs/tags/* ]]; then
             if [[ "$TAG_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
               echo "valid=true" >> $GITHUB_OUTPUT
@@ -77,21 +75,21 @@ jobs:
             exit 1
           fi
 
- build-and-test:
-   needs: [determine-environment, validate-branch]
-   if: needs.validate-branch.outputs.branch_valid == 'true'
-   runs-on: ubuntu-latest
-   steps:
-     - name: Checkout code
-       uses: cloudops-one/checkout@v4
+  build-and-test:
+    needs: [determine-environment, validate-branch]
+    if: needs.validate-branch.outputs.branch_valid == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: cloudops-one/checkout@v4
       
-     - name: Build React application
-       uses: cloudops-one/devops-ci/.github/actions/build-react@main
-       with:
-         node-version: '18'
-         sonarqube-token: ${{ secrets.SONARQUBE_TOKEN }}
-         sonarqube-url: ${{ secrets.SONARQUBE_URL }}
-         snyk-token: ${{ secrets.SNYK_TOKEN }}
+      - name: Build React application
+        uses: cloudops-one/devops-ci/.github/actions/build-react@main
+        with:
+          node-version: '18'
+          sonarqube-token: ${{ secrets.SONARQUBE_TOKEN }}
+          sonarqube-url: ${{ secrets.SONARQUBE_URL }}
+          snyk-token: ${{ secrets.SNYK_TOKEN }}
 
   security-scan:
     needs: build-and-test
