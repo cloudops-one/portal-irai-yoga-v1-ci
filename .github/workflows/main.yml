@@ -66,7 +66,7 @@ jobs:
       - name: Build and test
         uses: devops-ci/.github/actions/build-and-test@main
         with:
-          project_type: 'react'  # Change to 'java-spring', 'data', or 'e2e' as needed
+          project_type: 'react'
           node_version: '18'
           java_version: '11'
           build_tool: 'maven'
@@ -81,7 +81,7 @@ jobs:
       - name: Security scanning
         uses: devops-ci/.github/actions/security-scan@main
         with:
-          project_type: 'react'  # Change based on your project
+          project_type: 'react'
           snyk_token: ${{ secrets.SNYK_TOKEN }}
 
   docker-build-push:
@@ -95,8 +95,8 @@ jobs:
           harbor_registry: ${{ secrets.HARBOR_REGISTRY }}
           harbor_username: ${{ secrets.HARBOR_USERNAME }}
           harbor_password: ${{ secrets.HARBOR_PASSWORD }}
-          project_name: 'your-project-name'  # Update this
-          component: 'your-component'       # Update this
+          project_name: 'your-project-name'
+          component: 'your-component'
           docker_tag: ${{ needs.determine-environment.outputs.docker_tag }}
 
   deploy:
@@ -120,7 +120,7 @@ jobs:
           component: 'your-component'
           docker_tag: ${{ needs.determine-environment.outputs.docker_tag }}
           kubeconfig: ${{ secrets.KUBECONFIG }}
-          domain_config: ${{ vars.DOMAIN_CONFIG }}  # Store as variable or secret
+          domain_config: ${{ vars.DOMAIN_CONFIG }}
           deploy_supporting_services: false
 
       - name: DNS management (if needed)
@@ -132,13 +132,20 @@ jobs:
           aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
+      - name: Determine webhook URL
+        id: webhook
+        run: |
+          if [ "${{ needs.determine-environment.outputs.environment }}" = "preview" ]; then
+            echo "webhook_url=${{ secrets.ZOHO_CLIQ_WEBHOOK_PREVIEW }}" >> $GITHUB_OUTPUT
+          elif [ "${{ needs.determine-environment.outputs.environment }}" = "stage" ]; then
+            echo "webhook_url=${{ secrets.ZOHO_CLIQ_WEBHOOK_STAGE }}" >> $GITHUB_OUTPUT
+          else
+            echo "webhook_url=${{ secrets.ZOHO_CLIQ_WEBHOOK_LIVE }}" >> $GITHUB_OUTPUT
+          fi
+
       - name: Notify deployment
         uses: devops-ci/.github/actions/notify@main
         with:
-          webhook_url: ${{ 
-            needs.determine-environment.outputs.environment == 'preview' && secrets.ZOHO_CLIQ_WEBHOOK_PREVIEW ||
-            needs.determine-environment.outputs.environment == 'stage' && secrets.ZOHO_CLIQ_WEBHOOK_STAGE ||
-            needs.determine-environment.outputs.environment == 'live' && secrets.ZOHO_CLIQ_WEBHOOK_LIVE
-          }}
+          webhook_url: ${{ steps.webhook.outputs.webhook_url }}
           message: "✅ Deployment successful to ${{ needs.determine-environment.outputs.environment }}"
           environment: ${{ needs.determine-environment.outputs.environment }}
