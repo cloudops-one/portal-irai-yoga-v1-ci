@@ -152,5 +152,5 @@ jobs:
         uses: cloudops-one/devops-ci/.github/actions/notify@main
         with:
           webhook_url: ${{ steps.webhook.outputs.webhook_url }}
-          message: "✅ Deployment successful to ${{ needs.determine-environment.outputs.environment }}"
+          message: "✅ Deployment successful to :${{ needs.determine-environment.outputs.environment }}"
           environment: ${{ needs.determine-environment.outputs.environment }}
