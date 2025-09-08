@@ -12,42 +12,30 @@ on:
     branches: [main]
 
 jobs:
-  determine-environment:
+  validate-branch:
     runs-on: ubuntu-latest
     outputs:
       environment: ${{ steps.env.outputs.environment }}
       docker_tag: ${{ steps.tag.outputs.docker_tag }}
+      branch_valid: ${{ steps.validation.outputs.valid }}
     steps:
-      - name: Determine environment
+      - name: Determine environment and tag
         id: env
         run: |
           if [[ "$GITHUB_REF" == refs/tags/* ]]; then
             echo "environment=live" >> $GITHUB_OUTPUT
+            TAG="${GITHUB_REF#refs/tags/}"
+            echo "docker_tag=$TAG" >> $GITHUB_OUTPUT
           elif [[ "$GITHUB_REF" == refs/heads/main ]]; then
             echo "environment=stage" >> $GITHUB_OUTPUT
+            echo "docker_tag=stage" >> $GITHUB_OUTPUT
           else
             echo "environment=preview" >> $GITHUB_OUTPUT
-          fi
-      - name: Determine docker tag
-        id: tag
-        run: |
-          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
-            TAG="${GITHUB_REF#refs/tags/}"
-            echo "tag=$TAG" >> $GITHUB_OUTPUT
-          elif [[ "$GITHUB_REF" == refs/heads/main ]]; then
-            echo "tag=stage" >> $GITHUB_OUTPUT
-          else
             BRANCH_NAME="${GITHUB_REF#refs/heads/}"
             SANITIZED_BRANCH=$(echo "$BRANCH_NAME" | sed 's/[^a-zA-Z0-9-]/-/g' | tr '[:upper:]' '[:lower:]')
-            echo "tag=$SANITIZED_BRANCH" >> $GITHUB_OUTPUT
+            echo "docker_tag=$SANITIZED_BRANCH" >> $GITHUB_OUTPUT
           fi
 
-  validate-branch:
-    needs: determine-environment
-    runs-on: ubuntu-latest
-    outputs:
-      branch_valid: ${{ steps.validation.outputs.valid }}
-    steps:
       - name: Validate branch name
         id: validation
         run: |
@@ -76,7 +64,7 @@ jobs:
           fi
 
   determine-domain:
-    needs: determine-environment
+    needs: validate-branch
     runs-on: ubuntu-latest
     outputs:
       domain: ${{ steps.domain.outputs.domain }}
@@ -84,16 +72,16 @@ jobs:
       - name: Determine domain
         id: domain
         run: |
-          if [ "${{ needs.determine-environment.outputs.environment }}" = "preview" ]; then
+          if [ "${{ needs.validate-branch.outputs.environment }}" = "preview" ]; then
             echo "domain=${{ fromJson(vars.DOMAIN_CONFIG).preview_domain }}" >> $GITHUB_OUTPUT
-          elif [ "${{ needs.determine-environment.outputs.environment }}" = "stage" ]; then
+          elif [ "${{ needs.validate-branch.outputs.environment }}" = "stage" ]; then
             echo "domain=${{ fromJson(vars.DOMAIN_CONFIG).stage_domain }}" >> $GITHUB_OUTPUT
           else
             echo "domain=${{ fromJson(vars.DOMAIN_CONFIG).live_domain }}" >> $GITHUB_OUTPUT
           fi
 
   react-pipeline:
-    needs: [determine-environment, validate-branch, determine-domain]
+    needs: [validate-branch, determine-domain]
     if: needs.validate-branch.outputs.branch_valid == 'true'
     uses: cloudops-one/devops-ci/.github/workflows/react-pipeline.yml@main
     with:
@@ -105,7 +93,7 @@ jobs:
     secrets: inherit
 
   docker-build-push:
-    needs: [determine-environment, react-pipeline]
+    needs: [validate-branch, react-pipeline]
     runs-on: ubuntu-latest
     steps:
       - name: Build and push Docker image
@@ -117,28 +105,28 @@ jobs:
           harbor_password: ${{ secrets.HARBOR_PASSWORD }}
           project_name: 'portal-irai-yoga'
           component: 'web-app'
-          docker_tag: ${{ needs.determine-environment.outputs.docker_tag }}
+          docker_tag: ${{ needs.validate-branch.outputs.docker_tag }}
 
   deploy:
-    needs: [determine-environment, docker-build-push]
+    needs: [validate-branch, docker-build-push]
     runs-on: ubuntu-latest
     environment: 
-      name: ${{ needs.determine-environment.outputs.environment }}
+      name: ${{ needs.validate-branch.outputs.environment }}
     steps:
       - name: Setup environment
         uses: cloudops-one/devops-ci/.github/actions/setup-environment@main
         with:
-          environment: ${{ needs.determine-environment.outputs.environment }}
+          environment: ${{ needs.validate-branch.outputs.environment }}
           aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
       - name: Deploy to Kubernetes
         uses: cloudops-one/devops-ci/.github/actions/k8s-deploy@main
         with:
-          environment: ${{ needs.determine-environment.outputs.environment }}
+          environment: ${{ needs.validate-branch.outputs.environment }}
           project_name: 'portal-irai-yoga'
           component: 'web-app'
-          docker_tag: ${{ needs.determine-environment.outputs.docker_tag }}
+          docker_tag: ${{ needs.validate-branch.outputs.docker_tag }}
           kubeconfig: ${{ secrets.KUBECONFIG }}
           domain_config: ${{ needs.determine-domain.outputs.domain }}
           deploy_supporting_services: false
@@ -146,9 +134,9 @@ jobs:
       - name: Determine webhook URL
         id: webhook
         run: |
-          if [ "${{ needs.determine-environment.outputs.environment }}" = "preview" ]; then
+          if [ "${{ needs.validate-branch.outputs.environment }}" = "preview" ]; then
             echo "webhook_url=${{ secrets.ZOHO_CLIQ_WEBHOOK_PREVIEW }}" >> $GITHUB_OUTPUT
-          elif [ "${{ needs.determine-environment.outputs.environment }}" = "stage" ]; then
+          elif [ "${{ needs.validate-branch.outputs.environment }}" = "stage" ]; then
             echo "webhook_url=${{ secrets.ZOHO_CLIQ_WEBHOOK_STAGE }}" >> $GITHUB_OUTPUT
           else
             echo "webhook_url=${{ secrets.ZOHO_CLIQ_WEBHOOK_LIVE }}" >> $GITHUB_OUTPUT
@@ -158,5 +146,5 @@ jobs:
         uses: cloudops-one/devops-ci/.github/actions/notify@main
         with:
           webhook_url: ${{ steps.webhook.outputs.webhook_url }}
-          message: "✅ Deployment successful to ${{ needs.determine-environment.outputs.environment }}"
-          environment: ${{ needs.determine-environment.outputs.environment }}
+          message: "✅ Deployment successful to ${{ needs.validate-branch.outputs.environment }}"
+          environment: ${{ needs.validate-branch.outputs.environment }}
