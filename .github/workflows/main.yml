@@ -74,7 +74,6 @@ jobs:
             echo "Branch name does not match required pattern"
             exit 1
           fi
-
  build-and-test:
   needs: [determine-environment, validate-branch]
   if: needs.validate-branch.outputs.branch_valid == 'true'
