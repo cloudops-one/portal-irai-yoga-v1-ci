@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       environment: ${{ steps.env.outputs.environment }}
-      docker_tag: ${{ steps.tag.outputs.tag }}
+      docker_tag: ${{ steps.tag.outputs.docker_tag }}
     steps:
       - name: Determine environment
         id: env
@@ -75,35 +75,20 @@ jobs:
             exit 1
           fi
 
-  build-and-test:
+  react-pipeline:
     needs: [determine-environment, validate-branch]
     if: needs.validate-branch.outputs.branch_valid == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: cloudops-one/checkout@v4
-      
-      - name: Build and test
-        uses: cloudops-one/devops-ci/.github/actions/build-react@main
-        with:
-          project_type: 'node'
-          node_version: '18'
-          sonarqube_token: ${{ secrets.SONARQUBE_TOKEN }}
-          sonarqube_url: ${{ secrets.SONARQUBE_URL }}
-          snyk_token: ${{ secrets.SNYK_TOKEN }}
-
-  security-scan:
-    needs: build-and-test
-    runs-on: ubuntu-latest
-    steps:
-      - name: Security scanning
-        uses: cloudops-one/devops-ci/.github/actions/security-scan@main
-        with:
-          project_type: 'react'
-          snyk_token: ${{ secrets.SNYK_TOKEN }}
+    uses: cloudops-one/devops-ci/.github/workflows/react-pipeline.yml@main
+    with:
+      project-name: 'portal-irai-yoga'
+      repo-name: 'portal-irai-yoga-v1-ci'
+      service-type: 'web-app'
+      domain: ${{ fromJson(vars.DOMAIN_CONFIG).preview_domain }}  # Adjust based on environment
+      node-version: '18'
+    secrets: inherit
 
   docker-build-push:
-    needs: [determine-environment, build-and-test, security-scan]
+    needs: [determine-environment, react-pipeline]
     runs-on: ubuntu-latest
     steps:
       - name: Build and push Docker image
