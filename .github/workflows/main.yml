@@ -83,8 +83,8 @@ jobs:
       project-name: 'portal-irai-yoga'
       repo-name: 'portal-irai-yoga-v1-ci'
       service-type: 'web-app'
-      domain: ${{ fromJson(vars.DOMAIN_CONFIG).preview_domain }}  # Adjust based on environment
       node-version: '18'
+      # Remove the domain parameter since it might not be needed or handle it differently
     secrets: inherit
 
   docker-build-push:
@@ -115,6 +115,17 @@ jobs:
           aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
+      - name: Determine domain based on environment
+        id: domain
+        run: |
+          if [ "${{ needs.determine-environment.outputs.environment }}" = "preview" ]; then
+            echo "domain=${{ fromJson(vars.DOMAIN_CONFIG).preview_domain }}" >> $GITHUB_OUTPUT
+          elif [ "${{ needs.determine-environment.outputs.environment }}" = "stage" ]; then
+            echo "domain=${{ fromJson(vars.DOMAIN_CONFIG).stage_domain }}" >> $GITHUB_OUTPUT
+          else
+            echo "domain=${{ fromJson(vars.DOMAIN_CONFIG).live_domain }}" >> $GITHUB_OUTPUT
+          fi
+
       - name: Deploy to Kubernetes
         uses: cloudops-one/devops-ci/.github/actions/k8s-deploy@main
         with:
@@ -123,7 +134,7 @@ jobs:
           component: 'web-app'
           docker_tag: ${{ needs.determine-environment.outputs.docker_tag }}
           kubeconfig: ${{ secrets.KUBECONFIG }}
-          domain_config: ${{ vars.DOMAIN_CONFIG }}
+          domain_config: ${{ steps.domain.outputs.domain }}
           deploy_supporting_services: false
 
       - name: Determine webhook URL
