@@ -63,23 +63,6 @@ jobs:
             exit 1
           fi
 
-  determine-domain:
-    needs: validate-branch
-    runs-on: ubuntu-latest
-    outputs:
-      domain: ${{ steps.domain.outputs.domain }}
-    steps:
-      - name: Determine domain
-        id: domain
-        run: |
-          if [ "${{ needs.validate-branch.outputs.environment }}" = "preview" ]; then
-            echo "domain=${{ fromJson(vars.DOMAIN_CONFIG).preview_domain }}" >> $GITHUB_OUTPUT
-          elif [ "${{ needs.validate-branch.outputs.environment }}" = "stage" ]; then
-            echo "domain=${{ fromJson(vars.DOMAIN_CONFIG).stage_domain }}" >> $GITHUB_OUTPUT
-          else
-            echo "domain=${{ fromJson(vars.DOMAIN_CONFIG).live_domain }}" >> $GITHUB_OUTPUT
-          fi
-
   react-pipeline:
     needs: [validate-branch, determine-domain]
     if: needs.validate-branch.outputs.branch_valid == 'true'
