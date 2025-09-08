@@ -55,7 +55,7 @@ jobs:
           TAG_NAME="${GITHUB_REF#refs/tags/}"
           BRANCH_REGEX="^(feat|fix|chore|test|docs|refactor|ci|style|perf|build)/[0-9]{1,5}_[a-z0-9]+(-[a-z0-9]+)*$"
           if [[ "$GITHUB_REF" == refs/tags/* ]]; then
-            if [[ "$TAG_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            if [[ "$TAG_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-0]+$ ]]; then
               echo "valid=true" >> $GITHUB_OUTPUT
               echo "Tag $TAG_NAME is valid for live deployment"
             else
@@ -75,8 +75,25 @@ jobs:
             exit 1
           fi
 
+  determine-domain:
+    needs: determine-environment
+    runs-on: ubuntu-latest
+    outputs:
+      domain: ${{ steps.domain.outputs.domain }}
+    steps:
+      - name: Determine domain
+        id: domain
+        run: |
+          if [ "${{ needs.determine-environment.outputs.environment }}" = "preview" ]; then
+            echo "domain=${{ fromJson(vars.DOMAIN_CONFIG).preview_domain }}" >> $GITHUB_OUTPUT
+          elif [ "${{ needs.determine-environment.outputs.environment }}" = "stage" ]; then
+            echo "domain=${{ fromJson(vars.DOMAIN_CONFIG).stage_domain }}" >> $GITHUB_OUTPUT
+          else
+            echo "domain=${{ fromJson(vars.DOMAIN_CONFIG).live_domain }}" >> $GITHUB_OUTPUT
+          fi
+
   react-pipeline:
-    needs: [determine-environment, validate-branch]
+    needs: [determine-environment, validate-branch, determine-domain]
     if: needs.validate-branch.outputs.branch_valid == 'true'
     uses: cloudops-one/devops-ci/.github/workflows/react-pipeline.yml@main
     with:
@@ -84,11 +101,7 @@ jobs:
       repo-name: 'portal-irai-yoga-v1-ci'
       service-type: 'web-app'
       node-version: '18'
-      domain: ${{  # Add this domain input
-        needs.determine-environment.outputs.environment == 'preview' && fromJson(vars.DOMAIN_CONFIG).preview_domain ||
-        needs.determine-environment.outputs.environment == 'stage' && fromJson(vars.DOMAIN_CONFIG).stage_domain ||
-        fromJson(vars.DOMAIN_CONFIG).live_domain
-      }}
+      domain: ${{ needs.determine-domain.outputs.domain }}
     secrets: inherit
 
   docker-build-push:
@@ -119,17 +132,6 @@ jobs:
           aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
-      - name: Determine domain based on environment
-        id: domain
-        run: |
-          if [ "${{ needs.determine-environment.outputs.environment }}" = "preview" ]; then
-            echo "domain=${{ fromJson(vars.DOMAIN_CONFIG).preview_domain }}" >> $GITHUB_OUTPUT
-          elif [ "${{ needs.determine-environment.outputs.environment }}" = "stage" ]; then
-            echo "domain=${{ fromJson(vars.DOMAIN_CONFIG).stage_domain }}" >> $GITHUB_OUTPUT
-          else
-            echo "domain=${{ fromJson(vars.DOMAIN_CONFIG).live_domain }}" >> $GITHUB_OUTPUT
-          fi
-
       - name: Deploy to Kubernetes
         uses: cloudops-one/devops-ci/.github/actions/k8s-deploy@main
         with:
@@ -138,7 +140,7 @@ jobs:
           component: 'web-app'
           docker_tag: ${{ needs.determine-environment.outputs.docker_tag }}
           kubeconfig: ${{ secrets.KUBECONFIG }}
-          domain_config: ${{ steps.domain.outputs.domain }}
+          domain_config: ${{ needs.determine-domain.outputs.domain }}
           deploy_supporting_services: false
 
       - name: Determine webhook URL
