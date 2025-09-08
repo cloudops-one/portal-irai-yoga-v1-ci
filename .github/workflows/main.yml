@@ -84,7 +84,11 @@ jobs:
       repo-name: 'portal-irai-yoga-v1-ci'
       service-type: 'web-app'
       node-version: '18'
-      # Remove the domain parameter since it might not be needed or handle it differently
+      domain: ${{  # Add this domain input
+        needs.determine-environment.outputs.environment == 'preview' && fromJson(vars.DOMAIN_CONFIG).preview_domain ||
+        needs.determine-environment.outputs.environment == 'stage' && fromJson(vars.DOMAIN_CONFIG).stage_domain ||
+        fromJson(vars.DOMAIN_CONFIG).live_domain
+      }}
     secrets: inherit
 
   docker-build-push:
@@ -152,5 +156,5 @@ jobs:
         uses: cloudops-one/devops-ci/.github/actions/notify@main
         with:
           webhook_url: ${{ steps.webhook.outputs.webhook_url }}
-          message: "✅ Deployment successful to :${{ needs.determine-environment.outputs.environment }}"
+          message: "✅ Deployment successful to ${{ needs.determine-environment.outputs.environment }}"
           environment: ${{ needs.determine-environment.outputs.environment }}
