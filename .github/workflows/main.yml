@@ -74,22 +74,23 @@ jobs:
             echo "Branch name does not match required pattern"
             exit 1
           fi
- build-and-test:
-  needs: [determine-environment, validate-branch]
-  if: needs.validate-branch.outputs.branch_valid == 'true'
-  runs-on: ubuntu-latest
-  steps:
-    - name: Checkout code
-      uses: cloudops-one/checkout@v4
+
+  build-and-test:
+    needs: [determine-environment, validate-branch]
+    if: needs.validate-branch.outputs.branch_valid == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: cloudops-one/checkout@v4
       
-    - name: Build and test
-      uses: cloudops-one/devops-ci/.github/actions/build-and-test@main
-      with:
-        project_type: 'node'  # Changed from 'react' to 'node'
-        node_version: '18'
-        sonarqube_token: ${{ secrets.SONARQUBE_TOKEN }}
-        sonarqube_url: ${{ secrets.SONARQUBE_URL }}
-        snyk_token: ${{ secrets.SNYK_TOKEN }}
+      - name: Build and test
+        uses: cloudops-one/devops-ci/.github/actions/build-and-test@main
+        with:
+          project_type: 'node'
+          node_version: '18'
+          sonarqube_token: ${{ secrets.SONARQUBE_TOKEN }}
+          sonarqube_url: ${{ secrets.SONARQUBE_URL }}
+          snyk_token: ${{ secrets.SNYK_TOKEN }}
 
   security-scan:
     needs: build-and-test
