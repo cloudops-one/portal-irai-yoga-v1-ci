@@ -84,7 +84,7 @@ jobs:
         uses: cloudops-one/checkout@v4
       
       - name: Build and test
-        uses: cloudops-one/devops-ci/.github/actions/build-and-test@main
+        uses: cloudops-one/devops-ci/.github/actions/build-react@main
         with:
           project_type: 'node'
           node_version: '18'
