@@ -36,7 +36,8 @@ jobs:
           else
             echo "environment=preview" >> $GITHUB_OUTPUT
             BRANCH_NAME="${GITHUB_REF#refs/heads/}"
-            SANITIZED_BRANCH=$(echo "$BRANCH_NAME" | sed 's/[^a-zA-Z0-9-]/-/g' | tr '[:upper:]' '[:lower:]')
+            # More comprehensive sanitization for Docker tags
+            SANITIZED_BRANCH=$(echo "$BRANCH_NAME" | sed 's/[^a-zA-Z0-9.-]/-/g' | cut -c 1-128 | tr '[:upper:]' '[:lower:]')
             echo "docker_tag=$SANITIZED_BRANCH" >> $GITHUB_OUTPUT
           fi
           
@@ -99,6 +100,19 @@ jobs:
     steps:
       - name: Checkout code
         uses: cloudops-one/checkout@v4
+      
+      - name: Validate Docker tag format
+        id: validate-tag
+        run: |
+          TAG="${{ needs.validate-branch.outputs.docker_tag }}"
+          # Docker tags must match: [a-zA-Z0-9][a-zA-Z0-9_.-]{0,127}
+          if [[ ! "$TAG" =~ ^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,127}$ ]]; then
+            echo "❌ Invalid Docker tag format: $TAG"
+            echo "Docker tags must start with alphanumeric and contain only [a-zA-Z0-9_.-] (max 128 chars)"
+            exit 1
+          else
+            echo "✅ Docker tag is valid: $TAG"
+          fi
       
       - name: Build and push Docker image
         uses: cloudops-one/devops-ci/.github/actions/docker-operations@main
