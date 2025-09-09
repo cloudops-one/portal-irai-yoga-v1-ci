@@ -122,7 +122,7 @@ jobs:
           harbor-username: ${{ secrets.HARBOR_USERNAME }}
           harbor-password: ${{ secrets.HARBOR_PASSWORD }}
           project-name: 'portal-irai-yoga'
-          component: 'web-app'
+          component: 'admin'
           docker-tag: ${{ needs.validate-branch.outputs.docker_tag }}
 
   deploy:
