@@ -1,15 +1,36 @@
-name: CI/CD Pipeline
-
-permissions:
-  actions: read
-  contents: read
+name: Main CI/CD Pipeline
 
 on:
-  push:
-    branches: ['**']
-    tags: ['v*', '*.*.*']  # Updated: now accepts both v1.0.0 and 1.0.0 formats
-  pull_request:
-    branches: [main]
+  workflow_call:
+    inputs:
+      project-name:
+        required: true
+        type: string
+      component:
+        required: true
+        type: string
+      build-type:
+        required: true
+        type: choice
+        options:
+          - react
+          - node
+          - java
+          - python
+          - nextjs
+          - generic
+      build-command:
+        required: false
+        type: string
+        default: 'npm run build'
+      build-dir:
+        required: false
+        type: string
+        default: 'dist'
+      node-version:
+        required: false
+        type: string
+        default: '20'
 
 jobs:
   validate-branch:
@@ -53,7 +74,6 @@ jobs:
           TAG_NAME="${GITHUB_REF#refs/tags/}"
           BRANCH_REGEX="^(feat|fix|chore|test|docs|refactor|ci|style|perf|build)/[0-9]{1,5}_[a-z0-9]+(-[a-z0-9]+)*$"
           if [[ "$GITHUB_REF" == refs/tags/* ]]; then
-            # Updated regex: accepts both v1.0.0 and 1.0.0 formats
             if [[ "$TAG_NAME" =~ ^(v)?[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
               echo "valid=true" >> $GITHUB_OUTPUT
               echo "Tag $TAG_NAME is valid for live deployment"
@@ -74,49 +94,22 @@ jobs:
             exit 1
           fi
 
-  react-build:
+  application-build:
     needs: validate-branch
     if: needs.validate-branch.outputs.branch_valid == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: cloudops-one/checkout@v4
-        
-      - name: Setup Node.js 20 (without cache)
-        uses: cloudops-one/setup-node@v1
-        with:
-          node-version: '20'
-          # Remove cache parameter completely to avoid lockfile errors
-          
-      - name: Skip husky installation (CI environment)
-        run: |
-          # Skip husky installation in CI environment by removing prepare script
-          npm pkg delete scripts.prepare 2>/dev/null || echo "No prepare script to remove"
-          npm pkg delete scripts.postinstall 2>/dev/null || echo "No postinstall script to remove"
-          
-      - name: Generate package-lock.json if missing
-        run: |
-          if [ ! -f "package-lock.json" ]; then
-            echo "Generating package-lock.json..."
-            npm install --package-lock-only --no-audit --no-fund
-          else
-            echo "package-lock.json already exists"
-          fi
-          
-      - name: Install dependencies
-        run: npm install --no-audit --no-fund --ignore-scripts
-        
-      - name: Build project
-        run: npm run build
-        env:
-          CI: false
+    uses: cloudops-one/devops-ci/.github/workflows/build-and-test.yml@main
+    with:
+      build-type: ${{ inputs.build-type }}
+      build-command: ${{ inputs.build-command }}
+      node-version: ${{ inputs.node-version }}
+    secrets: inherit
 
   docker-build-push:
-    needs: [validate-branch, react-build]
+    needs: [validate-branch, application-build]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: cloudops-one/checkout@v4
+        uses: actions/checkout@v4
       
       - name: Build and push Docker image
         uses: cloudops-one/devops-ci/.github/actions/docker-operations@main
@@ -124,8 +117,8 @@ jobs:
           harbor-registry: ${{ secrets.HARBOR_REGISTRY }}
           harbor-username: ${{ secrets.HARBOR_USERNAME }}
           harbor-password: ${{ secrets.HARBOR_PASSWORD }}
-          project-name: 'portal-irai-yoga'
-          component: 'admin'
+          project-name: ${{ inputs.project-name }}
+          component: ${{ inputs.component }}
           docker-tag: ${{ needs.validate-branch.outputs.docker_tag }}
 
   deploy:
@@ -145,8 +138,8 @@ jobs:
         uses: cloudops-one/devops-ci/.github/actions/k8s-deploy@main
         with:
           environment: ${{ needs.validate-branch.outputs.environment }}
-          project-name: 'portal-irai-yoga'
-          component: 'admin'
+          project-name: ${{ inputs.project-name }}
+          component: ${{ inputs.component }}
           docker-tag: ${{ needs.validate-branch.outputs.docker_tag }}
           kubeconfig: ${{ secrets.KUBECONFIG }}
           domain-config: ${{ needs.validate-branch.outputs.domain }}
@@ -162,6 +155,7 @@ jobs:
           else
             echo "webhook_url=${{ secrets.ZOHO_CLIQ_WEBHOOK_LIVE }}" >> $GITHUB_OUTPUT
           fi
+      
       - name: Notify deployment
         uses: cloudops-one/devops-ci/.github/actions/notify@main
         with:
