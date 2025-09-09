@@ -79,10 +79,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: cloudops-one/checkout@v4
         
       - name: Setup Node.js 20.x
-        uses: actions/setup-node@v3
+        uses: cloudops-one/setup-node@v1
         with:
           node-version: '20.x'  # Changed from 18 to 20.x
           cache: 'npm'
@@ -105,7 +105,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: cloudops-one/checkout@v4
       
       - name: Build and push Docker image
         uses: cloudops-one/devops-ci/.github/actions/docker-operations@main
