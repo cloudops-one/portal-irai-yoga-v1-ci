@@ -15,7 +15,7 @@ This portal allows administrators to efficiently manage and oversee the activiti
 - ✅ Unit Tests with Jest
 - 🔒 Type Safety with TypeScript
 
----
+-----
 
 ## 🔧 Installation & Setup..
 
