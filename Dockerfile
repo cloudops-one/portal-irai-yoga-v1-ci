@@ -6,7 +6,7 @@ COPY package*.json ./
 RUN npm install --no-audit --no-fund
 
 COPY . .
-RUN npm run build   # React = "build" | Vue/Angular = "build" → dist folder
+RUN npm run build   # Vite creates "dist" folder
 
 # STAGE 2: Serve with NGINX
 FROM nginx:stable-alpine
@@ -20,8 +20,8 @@ RUN addgroup -S cloudops && adduser -S cloudops -G cloudops && \
              /var/cache/nginx && \
     chown -R cloudops:cloudops /usr/share/nginx /etc/nginx /tmp/nginx_temp /var/cache/nginx
 
-# React output is in /app/build, Vue/Angular usually in /app/dist
-COPY --from=builder /app/build /usr/share/nginx/html
+# Copy from Vite's dist folder (not build)
+COPY --from=builder /app/dist /usr/share/nginx/html
 
 COPY nginx.conf /etc/nginx/nginx.conf
 
