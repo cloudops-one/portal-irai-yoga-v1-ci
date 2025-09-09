@@ -21,7 +21,7 @@ jobs:
       domain: ${{ steps.domain.outputs.domain }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: cloudops-one/checkout@v4
         
       - name: Determine environment and tag
         id: env
@@ -47,7 +47,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: cloudops-one/checkout@v4
         
       - name: Build React application
         uses: cloudops-one/devops-ci/.github/actions/build-react@main
@@ -61,7 +61,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: cloudops-one/checkout@v4
       
       - name: Build and push Docker image
         uses: cloudops-one/devops-ci/.github/actions/build-and-test@main
@@ -88,6 +88,9 @@ jobs:
     environment: 
       name: ${{ needs.validate-branch.outputs.environment }}
     steps:
+      - name: Checkout code
+        uses: cloudops-one/checkout@v4
+        
       - name: Deploy to Kubernetes
         uses: cloudops-one/devops-ci/.github/actions/k8s-deploy@main
         with:
