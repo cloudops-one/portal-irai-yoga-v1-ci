@@ -79,10 +79,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: cloudops-one/checkout@v4
         
       - name: Setup Node.js 20 (without cache)
-        uses: actions/setup-node@v3
+        uses: cloudops-one/setup-node@v1
         with:
           node-version: '20'
           # Remove cache parameter completely to avoid lockfile errors
@@ -115,7 +115,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: cloudops-one/checkout@v4
       
       - name: Build and push Docker image
         uses: cloudops-one/devops-ci/.github/actions/docker-operations@main
