@@ -75,22 +75,36 @@ jobs:
             exit 1
           fi
 
-  react-pipeline:
+  react-build:
     needs: validate-branch
     if: needs.validate-branch.outputs.branch_valid == 'true'
-    uses: cloudops-one/devops-ci/.github/workflows/react-pipeline.yml@main
-    with:
-      project-name: 'portal-irai-yoga'
-      repo-name: 'portal-irai-yoga-v1-ci'
-      service-type: 'web-app'
-      node-version: '18'
-      domain: ${{ needs.validate-branch.outputs.domain }}
-    secrets: inherit
-
-  docker-build-push:
-    needs: validate-branch
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Build project
+        run: npm run build
+        env:
+          # Add any build environment variables needed here
+          CI: false
+
+  docker-build-push:
+    needs: [validate-branch, react-build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
       - name: Build and push Docker image
         uses: cloudops-one/devops-ci/.github/actions/docker-operations@main
         with:
@@ -103,7 +117,7 @@ jobs:
           docker_tag: ${{ needs.validate-branch.outputs.docker_tag }}
 
   deploy:
-    needs: [react-pipeline, docker-build-push]
+    needs: [validate-branch, docker-build-push]
     runs-on: ubuntu-latest
     environment: 
       name: ${{ needs.validate-branch.outputs.environment }}
