@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       environment: ${{ steps.env.outputs.environment }}
-      docker_tag: ${{ steps.tag.outputs.docker_tag }}
+      docker_tag: ${{ steps.env.outputs.docker_tag }}
       branch_valid: ${{ steps.validation.outputs.valid }}
       domain: ${{ steps.domain.outputs.domain }}
     steps:
