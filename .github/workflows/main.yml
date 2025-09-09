@@ -7,7 +7,7 @@ permissions:
 on:
   push:
     branches: ['**']
-    tags: ['v*', '*.*.*']
+    tags: ['v*', '*.*.*']  # Updated: now accepts both v1.0.0 and 1.0.0 formats
   pull_request:
     branches: [main]
 
@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       environment: ${{ steps.env.outputs.environment }}
-      docker_tag: ${{ steps.env.outputs.docker_tag }}
+      docker_tag: ${{ steps.tag.outputs.docker_tag }}
       branch_valid: ${{ steps.validation.outputs.valid }}
       domain: ${{ steps.domain.outputs.domain }}
     steps:
@@ -53,12 +53,13 @@ jobs:
           TAG_NAME="${GITHUB_REF#refs/tags/}"
           BRANCH_REGEX="^(feat|fix|chore|test|docs|refactor|ci|style|perf|build)/[0-9]{1,5}_[a-z0-9]+(-[a-z0-9]+)*$"
           if [[ "$GITHUB_REF" == refs/tags/* ]]; then
-            if [[ "$TAG_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            # Updated regex: accepts both v1.0.0 and 1.0.0 formats
+            if [[ "$TAG_NAME" =~ ^(v)?[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
               echo "valid=true" >> $GITHUB_OUTPUT
               echo "Tag $TAG_NAME is valid for live deployment"
             else
               echo "valid=false" >> $GITHUB_OUTPUT
-              echo "Invalid tag format. Expected: v1.0.0"
+              echo "Invalid tag format. Expected: v1.0.0 or 1.0.0"
               exit 1
             fi
           elif [[ "$BRANCH_NAME" == "main" ]]; then
@@ -85,9 +86,11 @@ jobs:
         uses: cloudops-one/setup-node@v1
         with:
           node-version: '20'
+          # Remove cache parameter completely to avoid lockfile errors
           
       - name: Skip husky installation (CI environment)
         run: |
+          # Skip husky installation in CI environment by removing prepare script
           npm pkg delete scripts.prepare 2>/dev/null || echo "No prepare script to remove"
           npm pkg delete scripts.postinstall 2>/dev/null || echo "No postinstall script to remove"
           
@@ -143,7 +146,7 @@ jobs:
         with:
           environment: ${{ needs.validate-branch.outputs.environment }}
           project-name: 'portal-irai-yoga'
-          component: 'web-app'
+          component: 'admin'
           docker-tag: ${{ needs.validate-branch.outputs.docker_tag }}
           kubeconfig: ${{ secrets.KUBECONFIG }}
           domain-config: ${{ needs.validate-branch.outputs.domain }}
