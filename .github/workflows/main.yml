@@ -37,7 +37,7 @@ jobs:
           
       - name: Validate branch name
         id: validation
-        uses: cloudops-one/devops-ci/.github/actions/docter-operations@main
+        uses: cloudops-one/devops-ci/.github/actions/docker-operations@main
         with:
           github_ref: ${{ github.ref }}
 
