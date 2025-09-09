@@ -120,13 +120,12 @@ jobs:
       - name: Build and push Docker image
         uses: cloudops-one/devops-ci/.github/actions/docker-operations@main
         with:
-          operation: "build-push"
-          harbor_registry: ${{ secrets.HARBOR_REGISTRY }}
-          harbor_username: ${{ secrets.HARBOR_USERNAME }}
-          harbor_password: ${{ secrets.HARBOR_PASSWORD }}
-          project_name: 'portal-irai-yoga'
+          harbor-registry: ${{ secrets.HARBOR_REGISTRY }}
+          harbor-username: ${{ secrets.HARBOR_USERNAME }}
+          harbor-password: ${{ secrets.HARBOR_PASSWORD }}
+          project-name: 'portal-irai-yoga'
           component: 'web-app'
-          docker_tag: ${{ needs.validate-branch.outputs.docker_tag }}
+          docker-tag: ${{ needs.validate-branch.outputs.docker_tag }}
 
   deploy:
     needs: [validate-branch, docker-build-push]
@@ -138,19 +137,19 @@ jobs:
         uses: cloudops-one/devops-ci/.github/actions/setup-environment@main
         with:
           environment: ${{ needs.validate-branch.outputs.environment }}
-          aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
       - name: Deploy to Kubernetes
         uses: cloudops-one/devops-ci/.github/actions/k8s-deploy@main
         with:
           environment: ${{ needs.validate-branch.outputs.environment }}
-          project_name: 'portal-irai-yoga'
+          project-name: 'portal-irai-yoga'
           component: 'web-app'
-          docker_tag: ${{ needs.validate-branch.outputs.docker_tag }}
+          docker-tag: ${{ needs.validate-branch.outputs.docker_tag }}
           kubeconfig: ${{ secrets.KUBECONFIG }}
-          domain_config: ${{ needs.validate-branch.outputs.domain }}
-          deploy_supporting_services: false
+          domain-config: ${{ needs.validate-branch.outputs.domain }}
+          deploy-supporting-services: false
 
       - name: Determine webhook URL
         id: webhook
@@ -166,6 +165,6 @@ jobs:
       - name: Notify deployment
         uses: cloudops-one/devops-ci/.github/actions/notify@main
         with:
-          webhook_url: ${{ steps.webhook.outputs.webhook_url }}
+          webhook-url: ${{ steps.webhook.outputs.webhook_url }}
           message: "✅ Deployment successful to ${{ needs.validate-branch.outputs.environment }}"
           environment: ${{ needs.validate-branch.outputs.environment }}
