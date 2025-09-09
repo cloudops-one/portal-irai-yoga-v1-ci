@@ -84,7 +84,7 @@ jobs:
       - name: Setup Node.js (without cache)
         uses: cloudops-one/setup-node@v1
         with:
-          node-version: '18'
+          node-version: '20'
           # Remove cache parameter to avoid lockfile errors
           
       - name: Generate package-lock.json
