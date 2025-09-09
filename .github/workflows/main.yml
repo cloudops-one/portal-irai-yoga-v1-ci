@@ -96,9 +96,11 @@ jobs:
           skip-husky: true
           generate-lockfile: true
 
-  docker-build-push:
+  docker-build:
     needs: [validate-branch, react-build]
     runs-on: ubuntu-latest
+    outputs:
+      image_tag: ${{ steps.set-tag.outputs.image_tag }}
     steps:
       - name: Checkout code
         uses: cloudops-one/checkout@v4
@@ -121,8 +123,15 @@ jobs:
           else
             echo "✅ Docker tag is valid: $TAG"
           fi
+
+      - name: Set full image tag
+        id: set-tag
+        run: |
+          FULL_IMAGE_TAG="${{ secrets.HARBOR_REGISTRY }}/portal-irai-yoga/admin:${{ needs.validate-branch.outputs.docker_tag }}"
+          echo "image_tag=$FULL_IMAGE_TAG" >> $GITHUB_OUTPUT
+          echo "Image tag set to: $FULL_IMAGE_TAG"
       
-      - name: Build and push Docker image
+      - name: Build Docker image
         uses: cloudops-one/devops-ci/.github/actions/docker-operations@main
         with:
           harbor-registry: ${{ secrets.HARBOR_REGISTRY }}
@@ -131,18 +140,40 @@ jobs:
           project-name: 'portal-irai-yoga'
           component: 'admin'
           docker-tag: ${{ needs.validate-branch.outputs.docker_tag }}
+          # CRITICAL: This action should ONLY build, NOT push
+          push-image: false
 
   security-scan:
-    needs: docker-build-push
+    needs: docker-build
     runs-on: ubuntu-latest
     steps:
       - name: Security scan
         uses: cloudops-one/devops-ci/.github/actions/security-scan@main
         with:
-          image-name: '${{ secrets.HARBOR_REGISTRY }}/portal-irai-yoga/admin:${{ needs.validate-branch.outputs.docker_tag }}'
+          image-name: ${{ needs.docker-build.outputs.image_tag }}
+        # The security-scan action should exit with a non-zero code if critical vulnerabilities are found
+
+  docker-push:
+    needs: [docker-build, security-scan]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: cloudops-one/checkout@v4
+      
+      - name: Push Docker image
+        uses: cloudops-one/devops-ci/.github/actions/docker-operations@main
+        with:
+          harbor-registry: ${{ secrets.HARBOR_REGISTRY }}
+          harbor-username: ${{ secrets.HARBOR_USERNAME }}
+          harbor-password: ${{ secrets.HARBOR_PASSWORD }}
+          project-name: 'portal-irai-yoga'
+          component: 'admin'
+          docker-tag: ${{ needs.validate-branch.outputs.docker_tag }}
+          # CRITICAL: This action should ONLY push the already-built image
+          push-image: true
 
   deploy:
-    needs: [validate-branch, docker-build-push, security-scan]
+    needs: [validate-branch, docker-push]
     runs-on: ubuntu-latest
     environment: 
       name: ${{ needs.validate-branch.outputs.environment }}
