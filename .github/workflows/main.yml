@@ -21,23 +21,23 @@ jobs:
       domain: ${{ steps.domain.outputs.domain }}
     steps:
       - name: Checkout code
-        uses: cloudops-one/checkout@v4
+        uses: actions/checkout@v4
         
       - name: Determine environment and tag
         id: env
-        uses: devops-ci/github/actions/setup-environment@main
+        uses: cloudops-one/devops-ci/.github/actions/setup-environment@main
         with:
           github_ref: ${{ github.ref }}
           
       - name: Determine domain
         id: domain
-        uses: devops-ci/github/actions/dns-management@main
+        uses: cloudops-one/devops-ci/.github/actions/dns-management@main
         with:
           github_ref: ${{ github.ref }}
           
       - name: Validate branch name
         id: validation
-        uses: devops-ci/github/actions/docter-operations@main
+        uses: cloudops-one/devops-ci/.github/actions/docter-operations@main
         with:
           github_ref: ${{ github.ref }}
 
@@ -47,10 +47,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: cloudops-one/checkout@v4
+        uses: actions/checkout@v4
         
       - name: Build React application
-        uses: devops-ci/github/actions/build-react@main
+        uses: cloudops-one/devops-ci/.github/actions/build-react@main
         with:
           node-version: '20'
           skip-husky: true
@@ -61,10 +61,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: cloudops-one/checkout@v4
+        uses: actions/checkout@v4
       
       - name: Build and push Docker image
-        uses: devops-ci/github/actions/build-and-test@main
+        uses: cloudops-one/devops-ci/.github/actions/build-and-test@main
         with:
           harbor-registry: ${{ secrets.HARBOR_REGISTRY }}
           harbor-username: ${{ secrets.HARBOR_USERNAME }}
@@ -78,7 +78,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Security scan
-        uses: devops-ci/github/actions/security-scan@main
+        uses: cloudops-one/devops-ci/.github/actions/security-scan@main
         with:
           image-name: '${{ secrets.HARBOR_REGISTRY }}/portal-irai-yoga/admin:${{ needs.validate-branch.outputs.docker_tag }}'
 
@@ -89,7 +89,7 @@ jobs:
       name: ${{ needs.validate-branch.outputs.environment }}
     steps:
       - name: Deploy to Kubernetes
-        uses: devops-ci/github/actions/k8s-deploy@main
+        uses: cloudops-one/devops-ci/.github/actions/k8s-deploy@main
         with:
           environment: ${{ needs.validate-branch.outputs.environment }}
           project-name: 'portal-irai-yoga'
@@ -100,12 +100,8 @@ jobs:
           deploy-supporting-services: false
 
       - name: Notify deployment
-        uses: devops-ci/github/actions/notify@main
+        uses: cloudops-one/devops-ci/.github/actions/notify@main
         with:
+          webhook-url: ${{ steps.webhook.outputs.webhook_url }}
+          message: "✅ Deployment successful to ${{ needs.validate-branch.outputs.environment }}"
           environment: ${{ needs.validate-branch.outputs.environment }}
-          project-name: 'portal-irai-yoga'
-          component: 'admin'
-          status: 'success'
-          webhook-preview: ${{ secrets.ZOHO_CLIQ_WEBHOOK_PREVIEW }}
-          webhook-stage: ${{ secrets.ZOHO_CLIQ_WEBHOOK_STAGE }}
-          webhook-live: ${{ secrets.ZOHO_CLIQ_WEBHOOK_LIVE }}
