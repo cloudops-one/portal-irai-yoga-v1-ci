@@ -79,25 +79,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: cloudops-one/checkout@v4
+        uses: actions/checkout@v4
         
-      - name: Setup Node.js
-        uses: cloudops-one/setup-node@v1
+      - name: Setup Node.js (without cache)
+        uses: actions/setup-node@v3
         with:
           node-version: '18'
-          cache: 'npm'
+          # Remove cache parameter to avoid lockfile errors
           
-      - name: Check for package-lock.json and generate if missing
-        id: check_lockfile
-        run: |
-          if [ ! -f "package-lock.json" ]; then
-            echo "No package-lock.json found, generating one..."
-            npm install --package-lock-only
-            echo "lockfile_generated=true" >> $GITHUB_OUTPUT
-          else
-            echo "package-lock.json found"
-            echo "lockfile_generated=false" >> $GITHUB_OUTPUT
-          fi
+      - name: Generate package-lock.json
+        run: npm install --package-lock-only --no-audit --no-fund
           
       - name: Install dependencies
         run: npm install --no-audit --no-fund
@@ -112,7 +103,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: cloudops-one/checkout@v4
+        uses: actions/checkout@v4
       
       - name: Build and push Docker image
         uses: cloudops-one/devops-ci/.github/actions/docker-operations@main
