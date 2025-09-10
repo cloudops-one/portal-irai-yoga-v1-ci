@@ -22,8 +22,7 @@ domain: ${{ steps.domain.outputs.domain }}
 steps:
 - name: Checkout code
 uses: cloudops-one/checkout@v4
-
-  - name: Determine environment and tag
+- name: Determine environment and tag
     id: env
     run: |
       if [[ "$GITHUB_REF" == refs/tags/* ]]; then
