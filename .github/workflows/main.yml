@@ -96,41 +96,45 @@ jobs:
           skip-husky: true
           generate-lockfile: true
 
-  docker-build:
-    needs: [validate-branch, react-build]
-    runs-on: ubuntu-latest
-    outputs:
-      image_tag: ${{ steps.set-tag.outputs.image_tag }}
-    steps:
-      - name: Checkout code
-        uses: cloudops-one/checkout@v4
-      
-      - name: Validate Docker tag format
-        id: validate-tag
-        run: |
-          TAG="${{ needs.validate-branch.outputs.docker_tag }}"
-          # Check if tag is not empty and follows Docker tag format
-          if [ -z "$TAG" ]; then
-            echo "❌ Docker tag is empty"
-            exit 1
-          fi
-          
-          # Docker tags must match: [a-zA-Z0-9][a-zA-Z0-9_.-]{0,127}
-          if [[ ! "$TAG" =~ ^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,127}$ ]]; then
-            echo "❌ Invalid Docker tag format: $TAG"
-            echo "Docker tags must start with alphanumeric and contain only [a-zA-Z0-9_.-] (max 128 chars)"
-            exit 1
+ docker-build:
+   needs: [validate-branch, react-build]
+   runs-on: ubuntu-latest
+   outputs:
+   image_tag: ${{ steps.set-tag.outputs.image_tag }}
+   steps:
+     - name: Checkout code
+       uses: cloudops-one/checkout@v4
+     - name: Validate Docker tag format
+       id: validate-tag
+       run: |
+        TAG="${{ needs.validate-branch.outputs.docker_tag }}"
+    # Check if tag is not empty and follows Docker tag format
+         if [ -z "$TAG" ]; then
+          echo "❌ Docker tag is empty"
+           exit 1
+        fi
+    
+    # Docker tags must match: [a-zA-Z0-9][a-zA-Z0-9_.-]{0,127}
+        if [[ ! "$TAG" =~ ^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,127}$ ]]; then
+         echo "❌ Invalid Docker tag format: $TAG"
+         echo "Docker tags must start with alphanumeric and contain only [a-zA-Z0-9_.-] (max 128 chars)"
+             exit 1
           else
-            echo "✅ Docker tag is valid: $TAG"
-          fi
-
-      - name: Set full image tag
-        id: set-tag
-        run: |
-          FULL_IMAGE_TAG="${{ secrets.HARBOR_REGISTRY }}/portal-irai-yoga/admin:${{ needs.validate-branch.outputs.docker_tag }}"
-          echo "image_tag=$FULL_IMAGE_TAG" >> $GITHUB_OUTPUT
-          echo "Image tag set to: $FULL_IMAGE_TAG"
-
+        echo "✅ Docker tag is valid: $TAG"
+       fi
+    
+- name: Set full image tag
+  id: set-tag
+  run: |
+    FULL_IMAGE_TAG="${{ secrets.HARBOR_REGISTRY }}/portal-irai-yoga/admin:${{ needs.validate-branch.outputs.docker_tag }}"
+    echo "image_tag=$FULL_IMAGE_TAG" >> $GITHUB_OUTPUT
+    echo "Image tag set to: $FULL_IMAGE_TAG"
+    
+- name: Build Docker image
+  run: |
+    # Use the tag from the previous step to build the image
+    docker build -t ${{ steps.set-tag.outputs.image_tag }} .
+     
   security-scan:
     needs: docker-build
     runs-on: ubuntu-latest
