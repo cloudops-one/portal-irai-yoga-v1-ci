@@ -130,18 +130,6 @@ jobs:
           FULL_IMAGE_TAG="${{ secrets.HARBOR_REGISTRY }}/portal-irai-yoga/admin:${{ needs.validate-branch.outputs.docker_tag }}"
           echo "image_tag=$FULL_IMAGE_TAG" >> $GITHUB_OUTPUT
           echo "Image tag set to: $FULL_IMAGE_TAG"
-      
-      - name: Build Docker image
-        uses: cloudops-one/devops-ci/.github/actions/docker-operations@main
-        with:
-          harbor-registry: ${{ secrets.HARBOR_REGISTRY }}
-          harbor-username: ${{ secrets.HARBOR_USERNAME }}
-          harbor-password: ${{ secrets.HARBOR_PASSWORD }}
-          project-name: 'portal-irai-yoga'
-          component: 'admin'
-          docker-tag: ${{ needs.validate-branch.outputs.docker_tag }}
-          # CRITICAL: This action should ONLY build, NOT push
-          push-image: false
 
   security-scan:
     needs: docker-build
