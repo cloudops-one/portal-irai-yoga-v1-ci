@@ -103,7 +103,7 @@ jobs:
         uses: cloudops-one/checkout@v4
         
       - name: Run Tests with Coverage
-        uses: cloudops-one/.github/actions/code-coverage@main
+        uses: cloudops-one/devops-ci/.github/actions/code-coverage@main
         with:
           coverage-report: true
           coverage-format: cobertura
