@@ -79,21 +79,6 @@ jobs:
             exit 1
           fi
 
-  compile:
-    needs: validate-branch
-    if: needs.validate-branch.outputs.branch_valid == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: cloudops-one/checkout@v4
-        
-      - name: Compile application
-        run: |
-          echo "Running compilation step..."
-          # Add your compilation commands here
-          # For example: npm run build, mvn compile, make, etc.
-          echo "Compilation completed successfully"
-          
   gitleaks-scan:
     needs: validate-branch
     if: needs.validate-branch.outputs.branch_valid == 'true'
@@ -113,7 +98,7 @@ jobs:
           redact-secrets: true
 
   code-coverage:
-    needs: validate-branch
+    needs: gitleaks-scan
     if: needs.validate-branch.outputs.branch_valid == 'true'
     runs-on: ubuntu-latest
     steps:
@@ -125,8 +110,23 @@ jobs:
         with:
           node-version: '20'
 
+  compile:
+    needs: code-coverage
+    if: needs.validate-branch.outputs.branch_valid == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: cloudops-one/checkout@v4
+        
+      - name: Compile application
+        run: |
+          echo "Running compilation step..."
+          # Add your compilation commands here
+          # For example: npm run build, mvn compile, make, etc.
+          echo "Compilation completed successfully"
+
   react-build:
-    needs: [validate-branch, code-coverage]
+    needs: compile
     if: needs.validate-branch.outputs.branch_valid == 'true'
     runs-on: ubuntu-latest
     steps:
