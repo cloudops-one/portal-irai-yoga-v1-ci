@@ -89,7 +89,7 @@ jobs:
         uses: cloudops-one/checkout@v4
         
       - name: Run Code Coverage
-        uses: ./.github/actions/code-coverage
+        uses: cloudops-one/devops-ci/.github/actions/code-coverage
         with:
           node-version: '20'
           # Add any additional inputs your code coverage action might need
