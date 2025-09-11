@@ -24,7 +24,45 @@ jobs:
           # Add your compilation commands here
           # For example: npm run build, mvn compile, make, etc.
           echo "Compilation completed successfully"
+          
+ git-leaks:
+    name: Secret Detection
+    runs-on: ubuntu-latest
+    env:
+      GITLEAKS_VERSION: v8.18.0
+    
+    steps:
+    - name: Checkout code
+      uses: cloudops-one/checkout@v4
+      with:
+        fetch-depth: ${{ github.event_name == 'workflow_dispatch' && inputs.full-scan == 'true' && 0 || 50 }}
 
+    - name: Setup Gitleaks
+      run: |
+        wget https://github.com/gitleaks/gitleaks/releases/download/$GITLEAKS_VERSION/gitleaks_${GITLEAKS_VERSION#v}_linux_x64.tar.gz
+        tar -xzf gitleaks_${GITLEAKS_VERSION#v}_linux_x64.tar.gz
+        sudo mv gitleaks /usr/local/bin/
+        gitleaks version
+
+    - name: Run Gitleaks Scan
+      run: |
+        if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.full-scan }}" = "true" ]; then
+          echo "Running full history scan..."
+          gitleaks detect --source . --verbose --redact --report-format json --report-path gitleaks-report.json
+        else
+          echo "Running recent changes scan..."
+          gitleaks detect --source . --verbose --redact --report-format json --report-path gitleaks-report.json
+        fi
+
+    - name: Check for leaks
+      run: |
+        if [ -s gitleaks-report.json ]; then
+          echo "Secrets detected! Check gitleaks-report.json for details."
+          exit 1
+        else
+          echo "No secrets detected. Good job!"
+        fi
+        
   validate-branch:
     needs: compile
     runs-on: ubuntu-latest
