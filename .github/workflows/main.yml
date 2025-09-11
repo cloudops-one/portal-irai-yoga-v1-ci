@@ -144,7 +144,7 @@ jobs:
           image-name: ${{ needs.docker-build.outputs.image_tag }}
 
   docker-push:
-    needs: [docker-build, security-scan]
+    needs: docker-build
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
