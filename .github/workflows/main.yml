@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: cloudops-one/checkout@v1
         
       - name: Compile application
         run: |
@@ -35,7 +35,7 @@ jobs:
       domain: ${{ steps.domain.outputs.domain }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: cloudops-one/checkout@v1
         
       - name: Determine environment and tag
         id: env
@@ -116,7 +116,7 @@ jobs:
           npm test -- --coverage --watchAll=false --passWithNoTests
           
       - name: Upload coverage report
-        uses: actions/upload-artifact@v4
+        uses: cloudops-one/upload-artifact@v4
         with:
           name: coverage-report
           path: coverage/
@@ -185,7 +185,7 @@ jobs:
         run: npm run build
         
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
+        uses: cloudops-one/upload-artifact@v4
         with:
           name: react-build
           path: build/
