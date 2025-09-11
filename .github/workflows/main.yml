@@ -12,39 +12,7 @@ on:
     branches: [main]
 
 jobs:
-  compile:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: cloudops-one/checkout@v4
-        
-      - name: Compile application
-        run: |
-          echo "Running compilation step..."
-          # Add your compilation commands here
-          # For example: npm run build, mvn compile, make, etc.
-          echo "Compilation completed successfully"
-          
-  gitleaks-scan:
-    needs: compile
-    if: needs.validate-branch.outputs.branch_valid == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: cloudops-one/checkout@v4
-        with:
-          fetch-depth: 0
-          
-      - name: Run Gitleaks Security Scan
-        uses: cloudops-one/devops-ci/.github/actions/gitleaks-scan@main
-        with:
-          scan-path: '.'
-          fail-on-leak: true
-          config-path: '.gitleaks.toml'
-          redact-secrets: true
-        
   validate-branch:
-    needs: gitleaks-scan
     runs-on: ubuntu-latest
     outputs:
       environment: ${{ steps.env.outputs.environment }}
@@ -111,7 +79,39 @@ jobs:
             exit 1
           fi
 
-  # New code coverage job
+  compile:
+    needs: validate-branch
+    if: needs.validate-branch.outputs.branch_valid == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: cloudops-one/checkout@v4
+        
+      - name: Compile application
+        run: |
+          echo "Running compilation step..."
+          # Add your compilation commands here
+          # For example: npm run build, mvn compile, make, etc.
+          echo "Compilation completed successfully"
+          
+  gitleaks-scan:
+    needs: validate-branch
+    if: needs.validate-branch.outputs.branch_valid == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: cloudops-one/checkout@v4
+        with:
+          fetch-depth: 0
+          
+      - name: Run Gitleaks Security Scan
+        uses: cloudops-one/devops-ci/.github/actions/gitleaks-scan@main
+        with:
+          scan-path: '.'
+          fail-on-leak: true
+          config-path: '.gitleaks.toml'
+          redact-secrets: true
+
   code-coverage:
     needs: validate-branch
     if: needs.validate-branch.outputs.branch_valid == 'true'
@@ -124,8 +124,6 @@ jobs:
         uses: cloudops-one/devops-ci/.github/actions/code-coverage@main
         with:
           node-version: '20'
-          # Add any additional inputs your code coverage action might need
-          # For example: coverage-threshold: 80
 
   react-build:
     needs: [validate-branch, code-coverage]
@@ -143,7 +141,8 @@ jobs:
           generate-lockfile: true
 
   docker-build:
-    needs: [validate-branch, react-build]
+    needs: [validate-branch, react-build, gitleaks-scan]
+    if: needs.validate-branch.outputs.branch_valid == 'true'
     runs-on: ubuntu-latest
     outputs:
       image_tag: ${{ steps.set-tag.outputs.image_tag }}
