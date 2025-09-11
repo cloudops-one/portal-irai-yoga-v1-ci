@@ -23,11 +23,10 @@ jobs:
           echo "Running compilation step..."
           # Add your compilation commands here
           # For example: npm run build, mvn compile, make, etc.
-          # This step should compile your source code before validation
           echo "Compilation completed successfully"
 
   validate-branch:
-    needs: compile  # Added dependency on compile job
+    needs: compile
     runs-on: ubuntu-latest
     outputs:
       environment: ${{ steps.env.outputs.environment }}
@@ -94,8 +93,55 @@ jobs:
             exit 1
           fi
 
+  # Job for running tests and generating code coverage reports
+  code-coverage:
+    needs: [compile, validate-branch]
+    if: needs.validate-branch.outputs.branch_valid == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: cloudops-one/checkout@v4
+        
+      - name: Run Tests with Coverage
+        uses: cloudops-one/.github/actions/code-coverage@main
+        with:
+          coverage-report: true
+          coverage-format: cobertura
+
+  # Job for performing SonarQube analysis
+  sonarqube-analysis:
+    needs: [code-coverage]
+    if: needs.validate-branch.outputs.branch_valid == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: cloudops-one/checkout@v4
+        
+      - name: SonarQube Analysis
+        uses: cloudops-one/devops-ci/.github/actions/sonarqube-scan@main
+        with:
+          sonar-host: ${{ secrets.SONARQUBE_HOST }}
+          sonar-token: ${{ secrets.SONARQUBE_TOKEN }}
+          project-key: "portal-irai-yoga-admin"
+          coverage-report-path: "./coverage.xml"
+
+  # Job for performing static application security testing (SAST)
+  security-scan-sast:
+    needs: [compile, validate-branch]
+    if: needs.validate-branch.outputs.branch_valid == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: cloudops-one/checkout@v4
+        
+      - name: Security Scan (SAST)
+        uses: cloudops-one/devops-ci/.github/actions/security-scan@main
+        with:
+          scan-type: "sast"
+          fail-on-critical: true
+
   react-build:
-    needs: validate-branch
+    needs: [validate-branch, sonarqube-analysis, security-scan-sast]
     if: needs.validate-branch.outputs.branch_valid == 'true'
     runs-on: ubuntu-latest
     steps:
@@ -134,6 +180,7 @@ jobs:
           else
             echo "✅ Docker tag is valid: $TAG"
           fi
+      
       - name: Set full image tag
         id: set-tag
         run: |
@@ -152,10 +199,11 @@ jobs:
     needs: docker-build
     runs-on: ubuntu-latest
     steps:
-      - name: Security scan
+      - name: Security scan (Container)
         uses: cloudops-one/devops-ci/.github/actions/security-scan@main
         with:
           image-name: ${{ needs.docker-build.outputs.image_tag }}
+          scan-type: "container"
 
   docker-push:
     needs: [docker-build, security-scan]
