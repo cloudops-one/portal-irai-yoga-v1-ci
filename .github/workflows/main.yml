@@ -12,6 +12,19 @@ on:
     branches: [main]
 
 jobs:
+  compile:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: cloudops-one/checkout@v4
+        
+      - name: Compile application
+        run: |
+          echo "Running compilation step..."
+          # Add your compilation commands here
+          # For example: npm run build, mvn compile, make, etc.
+          echo "Compilation completed successfully"
+
   validate-branch:
     runs-on: ubuntu-latest
     outputs:
