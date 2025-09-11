@@ -25,7 +25,7 @@ jobs:
           # For example: npm run build, mvn compile, make, etc.
           echo "Compilation completed successfully"
           
- git-leaks:
+  git-leaks:
     name: Secret Detection
     runs-on: ubuntu-latest
     env:
