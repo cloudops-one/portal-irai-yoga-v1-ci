@@ -99,6 +99,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       image_tag: ${{ steps.set-tag.outputs.image_tag }}
+      docker_tag: ${{ needs.validate-branch.outputs.docker_tag }}
     steps:
       - name: Checkout code
         uses: cloudops-one/checkout@v4
@@ -125,6 +126,7 @@ jobs:
         run: |
           FULL_IMAGE_TAG="${{ secrets.HARBOR_REGISTRY }}/portal-irai-yoga/admin:${{ needs.validate-branch.outputs.docker_tag }}"
           echo "image_tag=$FULL_IMAGE_TAG" >> $GITHUB_OUTPUT
+          echo "docker_tag=${{ needs.validate-branch.outputs.docker_tag }}" >> $GITHUB_OUTPUT
           echo "Image tag set to: $FULL_IMAGE_TAG"
       
       - name: Build Docker image
@@ -140,14 +142,7 @@ jobs:
     steps:
       - name: Checkout code
         uses: cloudops-one/checkout@v4
-      
-      - name: Set full image tag
-        id: set-tag
-        run: |
-          FULL_IMAGE_TAG="${{ secrets.HARBOR_REGISTRY }}/portal-irai-yoga/admin:${{ needs.validate-branch.outputs.docker_tag }}"
-          echo "image_tag=$FULL_IMAGE_TAG" >> $GITHUB_OUTPUT
-          echo "Image tag set to: $FULL_IMAGE_TAG"
-      
+    
       - name: Login to Docker Registry
         run: |
           echo "${{ secrets.HARBOR_PASSWORD }}" | docker login ${{ secrets.HARBOR_REGISTRY }} --username ${{ secrets.HARBOR_USERNAME }} --password-stdin
@@ -155,7 +150,7 @@ jobs:
       
       - name: Push Docker image
         run: |
-          docker push ${{ steps.set-tag.outputs.image_tag }}
+          docker push ${{ needs.docker-build.outputs.image_tag }}
         shell: bash
       
       - name: Logout from Docker Registry
@@ -185,7 +180,7 @@ jobs:
           environment: ${{ needs.validate-branch.outputs.environment }}
           project-name: 'portal-irai-yoga'
           component: 'admin'
-          docker-tag: ${{ needs.validate-branch.outputs.docker_tag }}
+          docker-tag: ${{ needs.docker-build.outputs.docker_tag }}
           kubeconfig: ${{ secrets.KUBECONFIG }}
           domain-config: ${{ needs.validate-branch.outputs.domain }}
           deploy-supporting-services: false
