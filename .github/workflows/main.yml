@@ -123,20 +123,26 @@ jobs:
           echo "Running compilation step..."
           echo "Compilation completed successfully"
 
-  react-build:
+  react-build-and-scan: # New combined job
     needs: compile
     if: needs.validate-branch.outputs.branch_valid == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: cloudops-one/checkout@v4
-        
+
       - name: Build React application
         uses: cloudops-one/devops-ci/.github/actions/build-react@main
         with:
           node-version: '20'
           skip-husky: true
           generate-lockfile: true
+
+      - name: Run Snyk Security Scan
+        uses: cloudops-one/devops-ci/.github/actions/snyk-scan@main
+        with:
+          snyk-token: ${{ secrets.SNYK_TOKEN }}
+          node-version: '20'
 
   docker-build:
     needs: [validate-branch, react-build, gitleaks-scan]
