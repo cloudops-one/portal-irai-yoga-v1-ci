@@ -111,7 +111,7 @@ jobs:
           generate-lockfile: true
       - name: Run Snyk Security Scan
         run: |
-          npm install -g snyk # Manually install snyk to fix 'command not found' error
+          npm install -g snyk
           snyk auth ${{ secrets.SNYK_TOKEN }}
           snyk test --all-projects --severity-threshold=high
           snyk monitor --all-projects
