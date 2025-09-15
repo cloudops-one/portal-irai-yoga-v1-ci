@@ -121,16 +121,11 @@ jobs:
           FULL_IMAGE_TAG="${{ secrets.HARBOR_REGISTRY }}/portal-irai-yoga/admin:${{ needs.validate-branch.outputs.docker_tag }}"
           docker build -t $FULL_IMAGE_TAG .
           echo "image_tag=$FULL_IMAGE_TAG" >> $GITHUB_OUTPUT
-        env:
-          FULL_IMAGE_TAG: ${{ secrets.HARBOR_REGISTRY }}/portal-irai-yoga/admin:${{ needs.validate-branch.outputs.docker_tag }}
         shell: bash
       - name: Run Trivy Container Scan
         uses: cloudops-one/devops-ci/.github/actions/trivy-scan@main
         with:
           image-name: ${{ steps.set-tag.outputs.image_tag }}
-          harbor-registry: ${{ secrets.HARBOR_REGISTRY }}
-          harbor-username: ${{ secrets.HARBOR_USERNAME }}
-          harbor-password: ${{ secrets.HARBOR_PASSWORD }}
 
   docker-push:
     needs: [validate-branch, build-and-scan]
