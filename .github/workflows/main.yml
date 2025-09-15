@@ -128,6 +128,7 @@ jobs:
         uses: cloudops-one/devops-ci/.github/actions/trivy-scan@main
         with:
           image-name: ${{ steps.set-tag.outputs.image_tag }}
+          harbor-registry: ${{ secrets.HARBOR_REGISTRY }}
           harbor-username: ${{ secrets.HARBOR_USERNAME }}
           harbor-password: ${{ secrets.HARBOR_PASSWORD }}
 
