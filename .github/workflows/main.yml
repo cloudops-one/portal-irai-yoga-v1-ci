@@ -121,8 +121,6 @@ jobs:
       - name: Compile application
         run: |
           echo "Running compilation step..."
-          # Add your compilation commands here
-          # For example: npm run build, mvn compile, make, etc.
           echo "Compilation completed successfully"
 
   react-build:
@@ -166,7 +164,7 @@ jobs:
           else
             echo "✅ Docker tag is valid: $TAG"
           fi
-
+      
       - name: Set full image tag
         id: set-tag
         run: |
@@ -181,17 +179,68 @@ jobs:
           FULL_IMAGE_TAG: ${{ secrets.HARBOR_REGISTRY }}/portal-irai-yoga/admin:${{ needs.validate-branch.outputs.docker_tag }}
         shell: bash
 
-  security-scan:
+  # Separate Security Scan Stages
+  install-security-tools:
     needs: docker-build
     runs-on: ubuntu-latest
     steps:
-      - name: Security scan
-        uses: cloudops-one/devops-ci/.github/actions/security-scan@main
+      - name: Checkout code
+        uses: cloudops-one/checkout@v4
+        
+      - name: Install Security Tools
+        uses: cloudops-one/devops-ci/.github/actions/install-security-tools@main
+        with:
+          node-version: '20'
+
+  snyk-security-scan:
+    needs: install-security-tools
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: cloudops-one/checkout@v4
+        
+      - name: Run Snyk Security Scan
+        uses: cloudops-one/devops-ci/.github/actions/snyk-scan@main
+        with:
+          snyk-token: ${{ secrets.SNYK_TOKEN }}
+          node-version: '20'
+
+  trivy-container-scan:
+    needs: install-security-tools
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: cloudops-one/checkout@v4
+        
+      - name: Run Trivy Container Scan
+        uses: cloudops-one/devops-ci/.github/actions/trivy-scan@main
         with:
           image-name: ${{ needs.docker-build.outputs.image_tag }}
 
+  code-formatting-check:
+    needs: install-security-tools
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: cloudops-one/checkout@v4
+        
+      - name: Run Code Formatting Check
+        uses: cloudops-one/devops-ci/.github/actions/code-formatting-check@main
+        with:
+          node-version: '20'
+
+  security-scan-summary:
+    needs: [snyk-security-scan, trivy-container-scan, code-formatting-check]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: cloudops-one/checkout@v4
+        
+      - name: Security Scan Summary
+        uses: cloudops-one/devops-ci/.github/actions/security-summary@main
+
   docker-push:
-    needs: [docker-build, security-scan]
+    needs: [docker-build, security-scan-summary]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -247,12 +296,4 @@ jobs:
           elif [ "${{ needs.validate-branch.outputs.environment }}" = "stage" ]; then
             echo "webhook_url=${{ secrets.ZOHO_CLIQ_WEBHOOK_STAGE }}" >> $GITHUB_OUTPUT
           else
-            echo "webhook_url=${{ secrets.ZOHO_CLIQ_WEBHOOK_LIVE }}" >> $GITHUB_OUTPUT
-          fi
-          
-      - name: Notify deployment
-        uses: cloudops-one/devops-ci/.github/actions/notify@main
-        with:
-          webhook-url: ${{ steps.webhook.outputs.webhook_url }}
-          message: "✅ Deployment successful to ${{ needs.validate-branch.outputs.environment }}"
-          environment: ${{ needs.validate-branch.outputs.environment }}
+            echo "webhook_url=${{ secrets.ZOHO_CLIQ_W
