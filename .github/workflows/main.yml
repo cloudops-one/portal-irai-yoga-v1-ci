@@ -179,7 +179,7 @@ jobs:
           FULL_IMAGE_TAG: ${{ secrets.HARBOR_REGISTRY }}/portal-irai-yoga/admin:${{ needs.validate-branch.outputs.docker_tag }}
         shell: bash
 
-  # SEPARATE Snyk Scan Job
+  # UPDATED Snyk Scan Job
   snyk-scan:
     needs: docker-build
     runs-on: ubuntu-latest
@@ -187,37 +187,16 @@ jobs:
       - name: Checkout code
         uses: cloudops-one/checkout@v4
       
-      - name: Install Snyk CLI
-        run: |
-          npm install -g snyk
-      
-      - name: Authenticate Snyk
-        run: |
-          snyk auth ${{ secrets.SNYK_TOKEN }}
-          echo "✅ Snyk authenticated successfully"
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-      
       - name: Run Snyk Container Scan
-        run: |
-          echo "Running Snyk container scan on: ${{ needs.docker-build.outputs.image_tag }}"
-          
-          # Extract just the image name without registry for display
-          IMAGE_NAME=$(echo "${{ needs.docker-build.outputs.image_tag }}" | cut -d'/' -f2- | cut -d':' -f1)
-          echo "Using display name: $IMAGE_NAME"
-          
-          # Scan with custom display name
-          snyk container test "${{ needs.docker-build.outputs.image_tag }}" --severity-threshold=high --app-vulns="$IMAGE_NAME"
-          
-          # Monitor with custom name
-          snyk container monitor "${{ needs.docker-build.outputs.image_tag }}" --app-vulns="$IMAGE_NAME"
-          
-          echo "✅ Snyk container scan completed"
-        shell: bash
+        uses: cloudops-one/devops-ci/.github/actions/snyk-scan@main
+        with:
+          image-name: ${{ needs.docker-build.outputs.image_tag }}
+          snyk-token: ${{ secrets.SNYK_TOKEN }}
+          severity-threshold: 'high'
 
   # UPDATED Security Scan (without Snyk)
   security-scan:
-    needs:  [docker-build, snyk-scan] 
+    needs: [docker-build, snyk-scan] 
     runs-on: ubuntu-latest
     steps:
       - name: Security scan
