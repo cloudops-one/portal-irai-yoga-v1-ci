@@ -217,7 +217,7 @@ jobs:
 
   # UPDATED Security Scan (without Snyk)
   security-scan:
-    needs: docker-build
+    needs:  [docker-build, snyk-scan] 
     runs-on: ubuntu-latest
     steps:
       - name: Security scan
