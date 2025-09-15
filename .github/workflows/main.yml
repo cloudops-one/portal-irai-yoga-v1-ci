@@ -124,7 +124,11 @@ jobs:
         env:
           FULL_IMAGE_TAG: ${{ secrets.HARBOR_REGISTRY }}/portal-irai-yoga/admin:${{ needs.validate-branch.outputs.docker_tag }}
         shell: bash
-        
+      - name: Run Trivy Container Scan
+        uses: cloudops-one/devops-ci/.github/actions/trivy-scan@main
+        with:
+          image-name: ${{ steps.set-tag.outputs.image_tag }}
+
   docker-push:
     needs: [validate-branch, build-and-scan]
     if: needs.validate-branch.outputs.branch_valid == 'true'
