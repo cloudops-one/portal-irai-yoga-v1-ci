@@ -184,16 +184,20 @@ jobs:
     needs: docker-build
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: cloudops-one/checkout@v4
-      
-      - name: Run Snyk Container Scan
-        uses: cloudops-one/devops-ci/.github/actions/snyk-scan@main
-        with:
-          image-name: ${{ needs.docker-build.outputs.image_tag }}
-          snyk-token: ${{ secrets.SNYK_TOKEN }}
-          severity-threshold: 'high'
-
+    - name: Checkout code
+      uses: cloudops-one/checkout@v4
+    
+    - name: Debug - Check image tag availability
+      run: |
+        echo "Image tag from docker-build: ${{ needs.docker-build.outputs.image_tag }}"
+        echo "Docker tag from validate-branch: ${{ needs.validate-branch.outputs.docker_tag }}"
+    
+    - name: Run Snyk Container Scan
+      uses: cloudops-one/devops-ci/.github/actions/snyk-scan@main
+      with:
+        image-name: ${{ needs.docker-build.outputs.image_tag }}
+        snyk-token: ${{ secrets.SNYK_TOKEN }}
+        severity-threshold: 'high'
   # UPDATED Security Scan (without Snyk)
   security-scan:
     needs: [docker-build, snyk-scan] 
