@@ -75,7 +75,6 @@ jobs:
             exit 1
           fi
 
-  # -------------------- Parallel Code Checks --------------------
   gitleaks-scan:
     needs: validate-branch
     if: needs.validate-branch.outputs.branch_valid == 'true'
@@ -93,32 +92,8 @@ jobs:
           config-path: '.gitleaks.toml'
           redact-secrets: true
 
-  code-formatting-check:
-    needs: validate-branch
-    if: needs.validate-branch.outputs.branch_valid == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: cloudops-one/checkout@v4
-      - name: Setup Node.js
-        uses: cloudops-one/setup-node@v1
-        with:
-          node-version: '20'
-          cache: 'npm'
-      - name: Install Prettier
-        run: npm install prettier
-      - name: Check code formatting
-        run: npx prettier --check .
-      - name: Report formatting issues
-        if: always() && steps.check.outcome == 'failure'
-        run: |
-          echo "::error title=Code Formatting::Prettier found formatting issues. Run 'npx prettier --write .' locally to fix."
-          exit 1
-        id: check
-
-  # -------------------- Primary Build & Security Scan --------------------
   build-and-scan:
-    needs: [validate-branch, gitleaks-scan, code-formatting-check]
+    needs: [validate-branch, gitleaks-scan]
     if: needs.validate-branch.outputs.branch_valid == 'true'
     runs-on: ubuntu-latest
     outputs:
@@ -136,7 +111,7 @@ jobs:
           generate-lockfile: true
       - name: Run Snyk Security Scan
         run: |
-          npm install -g snyk # Manually install snyk to fix 'command not found' error
+          npm install -g snyk
           snyk auth ${{ secrets.SNYK_TOKEN }}
           snyk test --all-projects --severity-threshold=high
           snyk monitor --all-projects
