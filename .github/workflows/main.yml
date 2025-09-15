@@ -111,7 +111,7 @@ jobs:
           generate-lockfile: true
       - name: Run Snyk Security Scan
         run: |
-          npm install -g snyk
+          npm install -g snyk # Manually install snyk to fix 'command not found' error
           snyk auth ${{ secrets.SNYK_TOKEN }}
           snyk test --all-projects --severity-threshold=high
           snyk monitor --all-projects
@@ -128,6 +128,8 @@ jobs:
         uses: cloudops-one/devops-ci/.github/actions/trivy-scan@main
         with:
           image-name: ${{ steps.set-tag.outputs.image_tag }}
+          harbor-username: ${{ secrets.HARBOR_USERNAME }}
+          harbor-password: ${{ secrets.HARBOR_PASSWORD }}
 
   docker-push:
     needs: [validate-branch, build-and-scan]
