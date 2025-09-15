@@ -1,5 +1,4 @@
 name: CI/CD Pipeline
-
 permissions:
   actions: read
   contents: read
@@ -22,7 +21,7 @@ jobs:
     steps:
       - name: Checkout code
         uses: cloudops-one/checkout@v4
-        
+
       - name: Determine environment and tag
         id: env
         run: |
@@ -39,7 +38,7 @@ jobs:
             SANITIZED_BRANCH=$(echo "$BRANCH_NAME" | sed 's/[^a-zA-Z0-9-]/-/g' | tr '[:upper:]' '[:lower:]')
             echo "docker_tag=$SANITIZED_BRANCH" >> $GITHUB_OUTPUT
           fi
-          
+
       - name: Determine domain
         id: domain
         run: |
@@ -50,14 +49,14 @@ jobs:
           else
             echo "domain=preview-domain-config" >> $GITHUB_OUTPUT
           fi
-          
+
       - name: Validate branch name and tag
         id: validation
         run: |
           BRANCH_NAME="${GITHUB_REF#refs/heads/}"
           TAG_NAME="${GITHUB_REF#refs/tags/}"
           BRANCH_REGEX="^(feat|fix|chore|test|docs|refactor|ci|style|perf|build)/[0-9]{1,5}_[a-z0-9]+(-[a-z0-9]+)*$"
-          
+
           if [[ "$GITHUB_REF" == refs/tags/* ]]; then
             if [[ "$TAG_NAME" =~ ^(v)?[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
               echo "valid=true" >> $GITHUB_OUTPUT
@@ -79,16 +78,25 @@ jobs:
             exit 1
           fi
 
-  gitleaks-scan:
+  build-and-scan:
     needs: validate-branch
     if: needs.validate-branch.outputs.branch_valid == 'true'
     runs-on: ubuntu-latest
+    outputs:
+      image_tag: ${{ steps.set-tag.outputs.image_tag }}
     steps:
       - name: Checkout code
         uses: cloudops-one/checkout@v4
         with:
           fetch-depth: 0
-          
+
+      - name: Install Node.js Dependencies and Build React App
+        uses: cloudops-one/devops-ci/.github/actions/build-react@main
+        with:
+          node-version: '20'
+          skip-husky: true
+          generate-lockfile: true
+
       - name: Run Gitleaks Security Scan
         uses: cloudops-one/devops-ci/.github/actions/gitleaks-scan@main
         with:
@@ -97,171 +105,42 @@ jobs:
           config-path: '.gitleaks.toml'
           redact-secrets: true
 
-  code-coverage:
-    needs: gitleaks-scan
-    if: needs.validate-branch.outputs.branch_valid == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: cloudops-one/checkout@v4
-        
-      - name: Run Code Coverage
-        uses: cloudops-one/devops-ci/.github/actions/code-coverage@main
-        with:
-          node-version: '20'
-
-  compile:
-    needs: code-coverage
-    if: needs.validate-branch.outputs.branch_valid == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: cloudops-one/checkout@v4
-        
-      - name: Compile application
-        run: |
-          echo "Running compilation step..."
-          echo "Compilation completed successfully"
-
-  react-build-and-scan: # New combined job
-    needs: compile
-    if: needs.validate-branch.outputs.branch_valid == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: cloudops-one/checkout@v4
-
-      - name: Build React application
-        uses: cloudops-one/devops-ci/.github/actions/build-react@main
-        with:
-          node-version: '20'
-          skip-husky: true
-          generate-lockfile: true
-
       - name: Run Snyk Security Scan
         uses: cloudops-one/devops-ci/.github/actions/snyk-scan@main
         with:
           snyk-token: ${{ secrets.SNYK_TOKEN }}
           node-version: '20'
 
-  docker-build:
-    needs: [validate-branch, react-build, gitleaks-scan]
-    if: needs.validate-branch.outputs.branch_valid == 'true'
-    runs-on: ubuntu-latest
-    outputs:
-      image_tag: ${{ steps.set-tag.outputs.image_tag }}
-    steps:
-      - name: Checkout code
-        uses: cloudops-one/checkout@v4
-      
-      - name: Validate Docker tag format
-        id: validate-tag
-        run: |
-          TAG="${{ needs.validate-branch.outputs.docker_tag }}"
-          if [ -z "$TAG" ]; then
-            echo "❌ Docker tag is empty"
-            exit 1
-          fi
-          
-          if [[ ! "$TAG" =~ ^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,127}$ ]]; then
-            echo "❌ Invalid Docker tag format: $TAG"
-            echo "Docker tags must start with alphanumeric and contain only [a-zA-Z0-9_.-] (max 128 chars)"
-            exit 1
-          else
-            echo "✅ Docker tag is valid: $TAG"
-          fi
-      
-      - name: Set full image tag
-        id: set-tag
-        run: |
-          FULL_IMAGE_TAG="${{ secrets.HARBOR_REGISTRY }}/portal-irai-yoga/admin:${{ needs.validate-branch.outputs.docker_tag }}"
-          echo "image_tag=$FULL_IMAGE_TAG" >> $GITHUB_OUTPUT
-          echo "Image tag set to: $FULL_IMAGE_TAG"
-      
-      - name: Build Docker image (NO PUSH)
-        run: |
-          docker build -t $FULL_IMAGE_TAG .
-        env:
-          FULL_IMAGE_TAG: ${{ secrets.HARBOR_REGISTRY }}/portal-irai-yoga/admin:${{ needs.validate-branch.outputs.docker_tag }}
-        shell: bash
-
-  # Separate Security Scan Stages using centralized actions
-  install-security-tools:
-    needs: docker-build
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: cloudops-one/checkout@v4
-        
-      - name: Install Security Tools
-        uses: cloudops-one/devops-ci/.github/actions/install-security-tools@main
-        with:
-          node-version: '20'
-
-  snyk-security-scan:
-    needs: install-security-tools
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: cloudops-one/checkout@v4
-        
-      - name: Run Snyk Security Scan
-        uses: cloudops-one/devops-ci/.github/actions/snyk-scan@main
-        with:
-          snyk-token: ${{ secrets.SNYK_TOKEN }}
-          node-version: '20'
-
-  trivy-container-scan:
-    needs: install-security-tools
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: cloudops-one/checkout@v4
-        
-      - name: Run Trivy Container Scan
-        uses: cloudops-one/devops-ci/.github/actions/trivy-scan@main
-        with:
-          image-name: ${{ needs.docker-build.outputs.image_tag }}
-
-  code-formatting-check:
-    needs: install-security-tools
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: cloudops-one/checkout@v4
-        
       - name: Run Code Formatting Check
         uses: cloudops-one/devops-ci/.github/actions/code-formatting-check@main
         with:
           node-version: '20'
 
-  security-scan-summary:
-    needs: [snyk-security-scan, trivy-container-scan, code-formatting-check]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: cloudops-one/checkout@v4
-        
-      - name: Security Scan Summary
-        uses: cloudops-one/devops-ci/.github/actions/security-summary@main
+      - name: Build Docker image (NO PUSH)
+        id: docker_build
+        run: |
+          FULL_IMAGE_TAG="${{ secrets.HARBOR_REGISTRY }}/portal-irai-yoga/admin:${{ needs.validate-branch.outputs.docker_tag }}"
+          docker build -t $FULL_IMAGE_TAG .
+          echo "image_tag=$FULL_IMAGE_TAG" >> $GITHUB_OUTPUT
+        env:
+          FULL_IMAGE_TAG: ${{ secrets.HARBOR_REGISTRY }}/portal-irai-yoga/admin:${{ needs.validate-branch.outputs.docker_tag }}
+        shell: bash
 
   docker-push:
-    needs: [docker-build, security-scan-summary]
+    needs: [validate-branch, build-and-scan]
+    if: needs.validate-branch.outputs.branch_valid == 'true'
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: cloudops-one/checkout极速赛车开奖结果@v4
-      
       - name: Login to Docker Registry
         run: |
           echo "${{ secrets.HARBOR_PASSWORD }}" | docker login ${{ secrets.HARBOR_REGISTRY }} --username ${{ secrets.HARBOR_USERNAME }} --password-stdin
         shell: bash
-      
+
       - name: Push Docker image (AFTER security scan)
         run: |
-          docker push ${{ needs.docker-build.outputs.image_tag }}
+          docker push ${{ needs.build-and-scan.outputs.image_tag }}
         shell: bash
-      
+
       - name: Logout from Docker Registry
         run: |
           docker logout ${{ secrets.HARBOR_REGISTRY }}
@@ -269,13 +148,14 @@ jobs:
 
   deploy:
     needs: [validate-branch, docker-push]
+    if: needs.validate-branch.outputs.branch_valid == 'true'
     runs-on: ubuntu-latest
-    environment: 
+    environment:
       name: ${{ needs.validate-branch.outputs.environment }}
     steps:
       - name: Checkout code
         uses: cloudops-one/checkout@v4
-        
+
       - name: Setup environment
         uses: cloudops-one/devops-ci/.github/actions/setup-environment@main
         with:
@@ -304,7 +184,7 @@ jobs:
           else
             echo "webhook_url=${{ secrets.ZOHO_CLIQ_WEBHOOK_LIVE }}" >> $GITHUB_OUTPUT
           fi
-          
+
       - name: Notify deployment
         uses: cloudops-one/devops-ci/.github/actions/notify@main
         with:
