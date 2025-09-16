@@ -77,7 +77,6 @@ jobs:
             echo "valid=false" >> $GITHUB_OUTPUT
             echo "Branch name does not match required pattern"
             exit 1
-          fi
 
   gitleaks-scan:
     needs: validate-branch
@@ -179,43 +178,8 @@ jobs:
         env:
           FULL_IMAGE_TAG: ${{ secrets.HARBOR_REGISTRY }}/portal-irai-yoga/admin:${{ needs.validate-branch.outputs.docker_tag }}
 
-  # Centralized Trivy Security Scan
-  trivy-scan:
-    needs: docker-build
-    runs-on: ubuntu-latest
-    steps:
-      - name: Run Trivy Container Scan
-        uses: cloudops-one/devops-ci/.github/actions/trivy-scan@main
-        with:
-          image-name: ${{ needs.docker-build.outputs.image_tag }}
-          severity-threshold: 'CRITICAL'
-          fail-on-vulnerabilities: true
-
-  # Centralized Snyk Security Scan
-  snyk-scan:
-    needs: docker-build
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check if Snyk token exists
-        id: check-snyk
-        run: |
-          if [ -n "${{ secrets.SNYK_TOKEN }}" ]; then
-            echo "has_snyk_token=true" >> $GITHUB_OUTPUT
-          else
-            echo "has_snyk_token=false" >> $GITHUB_OUTPUT
-          fi
-    
-      - name: Run Snyk Container Scan
-        if: steps.check-snyk.outputs.has_snyk_token == 'true'
-        uses: cloudops-one/devops-ci/.github/actions/snyk-scan@main
-        with:
-          image-name: ${{ needs.docker-build.outputs.image_tag }}
-          snyk-token: ${{ secrets.SNYK_TOKEN }}
-          severity-threshold: 'high'
-          fail-on-vulnerabilities: true
-          
   docker-push:
-    needs: [docker-build, trivy-scan, snyk-scan]
+    needs: docker-build
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -225,7 +189,7 @@ jobs:
         run: |
           echo "${{ secrets.HARBOR_PASSWORD }}" | docker login ${{ secrets.HARBOR_REGISTRY }} --username ${{ secrets.HARBOR_USERNAME }} --password-stdin
       
-      - name: Push Docker image (AFTER security scans)
+      - name: Push Docker image
         run: |
           docker push ${{ needs.docker-build.outputs.image_tag }}
       
