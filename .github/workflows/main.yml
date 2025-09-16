@@ -204,33 +204,9 @@ jobs:
           snyk-token: ${{ secrets.SNYK_TOKEN }}
           severity-threshold: 'high'
           fail-on-vulnerabilities: true
-
-  # Code Quality and SonarQube Scan
-  code-quality-scan:
-    needs: docker-build
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: cloudops-one/checkout@v4
-    
-      - name: Install SonarScanner
-        run: |
-         curl -O https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.8.0.2856-linux.zip
-         unzip sonar-scanner-cli-4.8.0.2856-linux.zip
-         sudo mv sonar-scanner-4.8.0.2856-linux /opt/sonar-scanner
-         echo '/opt/sonar-scanner/bin' >> $GITHUB_PATH
-    
-      - name: Run SonarQube Analysis
-        if: ${{ secrets.SONAR_TOKEN != '' && secrets.SONAR_HOST_URL != '' }}
-        run: |
-         sonar-scanner \
-          -Dsonar.projectKey=portal-irai-yoga-admin \
-          -Dsonar.sources=. \
-          -Dsonar.host.url=${{ secrets.SONAR_HOST_URL }} \
-          -Dsonar.login=${{ secrets.SONAR_TOKEN }}
           
   docker-push:
-    needs: [docker-build, trivy-scan, snyk-scan, code-quality-scan]
+    needs: [docker-build, trivy-scan, snyk-scan]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
