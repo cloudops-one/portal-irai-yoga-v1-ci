@@ -194,10 +194,19 @@ jobs:
   # Centralized Snyk Security Scan
   snyk-scan:
     needs: docker-build
-    if: ${{ secrets.SNYK_TOKEN != '' }}
     runs-on: ubuntu-latest
     steps:
+      - name: Check if Snyk token exists
+        id: check-snyk
+        run: |
+          if [ -n "${{ secrets.SNYK_TOKEN }}" ]; then
+            echo "has_snyk_token=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_snyk_token=false" >> $GITHUB_OUTPUT
+          fi
+    
       - name: Run Snyk Container Scan
+        if: steps.check-snyk.outputs.has_snyk_token == 'true'
         uses: cloudops-one/devops-ci/.github/actions/snyk-scan@main
         with:
           image-name: ${{ needs.docker-build.outputs.image_tag }}
