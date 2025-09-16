@@ -78,6 +78,7 @@ jobs:
             echo "Branch name does not match required pattern"
             exit 1
           fi
+
   gitleaks-scan:
     needs: validate-branch
     if: needs.validate-branch.outputs.branch_valid == 'true'
@@ -122,6 +123,7 @@ jobs:
           echo "Running compilation step..."
           # Add your compilation commands here
           echo "Compilation completed successfully"
+
   react-build:
     needs: compile
     if: needs.validate-branch.outputs.branch_valid == 'true'
@@ -142,7 +144,7 @@ jobs:
     if: needs.validate-branch.outputs.branch_valid == 'true'
     runs-on: ubuntu-latest
     outputs:
-      image_tag: ${{ steps.set-tag.outputs.image_tag }}
+      docker_tag: ${{ needs.validate-branch.outputs.docker_tag }}
     steps:
       - name: Checkout code
         uses: cloudops-one/checkout@v4
@@ -178,31 +180,19 @@ jobs:
           FULL_IMAGE_TAG: ${{ secrets.HARBOR_REGISTRY }}/portal-irai-yoga/admin:${{ needs.validate-branch.outputs.docker_tag }}
 
   docker-push:
-    needs: docker-build
+    needs: [docker-build, validate-branch]
     runs-on: ubuntu-latest
     steps:
-     - name: Checkout code
-       uses: cloudops-one/checkout@v4
-    
-     - name: Login to Docker Registry
-       run: |
-         echo "${{ secrets.HARBOR_PASSWORD }}" | docker login ${{ secrets.HARBOR_REGISTRY }} --username ${{ secrets.HARBOR_USERNAME }} --password-stdin
-    
-     - name: Set image tag
-       id: set-image-tag
-       run: |
-        FULL_IMAGE_TAG="${{ secrets.HARBOR_REGISTRY }}/portal-irai-yoga/admin:${{ needs.docker-build.outputs.docker_tag }}"
-        echo "image_tag=$FULL_IMAGE_TAG" >> $GITHUB_OUTPUT
-        echo "Image tag: $FULL_IMAGE_TAG"
-    
-     - name: Push Docker image
-       run: |
-         docker push ${{ steps.set-image-tag.outputs.image_tag }}
-    
-     - name: Logout from Docker Registry
-       run: |
-        docker logout ${{ secrets.HARBOR_REGISTRY }}
-        
+      - name: Push Docker image using centralized action
+        uses: cloudops-one/devops-ci/.github/actions/docker-push@main
+        with:
+          registry: ${{ secrets.HARBOR_REGISTRY }}
+          username: ${{ secrets.HARBOR_USERNAME }}
+          password: ${{ secrets.HARBOR_PASSWORD }}
+          repository: 'portal-irai-yoga/admin'
+          tag: ${{ needs.validate-branch.outputs.docker_tag }}
+          logout: 'true'
+
   deploy:
     needs: [validate-branch, docker-push]
     runs-on: ubuntu-latest
@@ -244,6 +234,6 @@ jobs:
       - name: Notify deployment
         uses: cloudops-one/devops-ci/.github/actions/notify@main
         with:
-          webhook-url: ${{ steps.webhook.outputs.web_url }}
+          webhook-url: ${{ steps.webhook.outputs.webhook_url }}
           message: "✅ Deployment successful to ${{ needs.validate-branch.outputs.environment }}"
           environment: ${{ needs.validate-branch.outputs.environment }}
