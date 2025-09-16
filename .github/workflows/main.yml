@@ -195,12 +195,6 @@ jobs:
           # Reconstruct the same image tag that was used for building
           IMAGE_TAG="${{ secrets.HARBOR_REGISTRY }}/portal-irai-yoga/admin:${{ needs.docker-build.outputs.docker_tag }}"
           echo "Pushing: $IMAGE_TAG"
-          
-          # Pull the image from the build job's artifact (if needed) OR rebuild
-          # Since we can't share images between jobs easily, we'll rebuild quickly
-          echo "Rebuilding image for push..."
-          docker build -t "$IMAGE_TAG" .
-          
           docker push "$IMAGE_TAG"
     
       - name: Logout from Docker Registry
