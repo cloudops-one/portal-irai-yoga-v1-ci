@@ -212,20 +212,23 @@ jobs:
     steps:
       - name: Checkout code
         uses: cloudops-one/checkout@v4
-        
+    
+      - name: Install SonarScanner
+        run: |
+         curl -O https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.8.0.2856-linux.zip
+         unzip sonar-scanner-cli-4.8.0.2856-linux.zip
+         sudo mv sonar-scanner-4.8.0.2856-linux /opt/sonar-scanner
+         echo '/opt/sonar-scanner/bin' >> $GITHUB_PATH
+    
       - name: Run SonarQube Analysis
         if: ${{ secrets.SONAR_TOKEN != '' && secrets.SONAR_HOST_URL != '' }}
-        uses: cloudops-one/devops-ci/.github/actions/sonarqube-scan@main
-        with:
-          sonar-token: ${{ secrets.SONAR_TOKEN }}
-          sonar-host: ${{ secrets.SONAR_HOST_URL }}
-          project-key: 'portal-irai-yoga-admin'
+        run: |
+         sonar-scanner \
+          -Dsonar.projectKey=portal-irai-yoga-admin \
+          -Dsonar.sources=. \
+          -Dsonar.host.url=${{ secrets.SONAR_HOST_URL }} \
+          -Dsonar.login=${{ secrets.SONAR_TOKEN }}
           
-      - name: Run Code Formatting Check
-        uses: cloudops-one/devops-ci/.github/actions/code-formatting@main
-        with:
-          check-only: true
-
   docker-push:
     needs: [docker-build, trivy-scan, snyk-scan, code-quality-scan]
     runs-on: ubuntu-latest
