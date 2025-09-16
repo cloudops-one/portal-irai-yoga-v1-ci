@@ -77,7 +77,7 @@ jobs:
             echo "valid=false" >> $GITHUB_OUTPUT
             echo "Branch name does not match required pattern"
             exit 1
-
+          fi
   gitleaks-scan:
     needs: validate-branch
     if: needs.validate-branch.outputs.branch_valid == 'true'
@@ -122,7 +122,6 @@ jobs:
           echo "Running compilation step..."
           # Add your compilation commands here
           echo "Compilation completed successfully"
-
   react-build:
     needs: compile
     if: needs.validate-branch.outputs.branch_valid == 'true'
@@ -196,7 +195,6 @@ jobs:
       - name: Logout from Docker Registry
         run: |
           docker logout ${{ secrets.HARBOR_REGISTRY }}
-
   deploy:
     needs: [validate-branch, docker-push]
     runs-on: ubuntu-latest
@@ -238,6 +236,6 @@ jobs:
       - name: Notify deployment
         uses: cloudops-one/devops-ci/.github/actions/notify@main
         with:
-          webhook-url: ${{ steps.webhook.outputs.webhook_url }}
+          webhook-url: ${{ steps.webhook.outputs.web_url }}
           message: "✅ Deployment successful to ${{ needs.validate-branch.outputs.environment }}"
           environment: ${{ needs.validate-branch.outputs.environment }}
