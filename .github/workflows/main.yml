@@ -107,15 +107,23 @@ jobs:
       - name: Checkout code
         uses: cloudops-one/checkout@v4
         
+      - name: Install Trivy
+        run: |
+          # Install Trivy directly using package manager
+          sudo apt-get update
+          sudo apt-get install -y wget apt-transport-https gnupg lsb-release
+          wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add -
+          echo deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main | sudo tee -a /etc/apt/sources.list.d/trivy.list
+          sudo apt-get update
+          sudo apt-get install -y trivy
+          
       - name: Run Trivy filesystem scan
-        uses: cloudops-one/trivy-action@0.24.0
-        with:
-          scan-type: 'fs'
-          scan-ref: '.'
-          format: 'table'
-          severity: 'CRITICAL,HIGH'
-          exit-code: '1'
-          ignore-unfixed: false
+        run: |
+          trivy filesystem . \
+            --format table \
+            --severity CRITICAL,HIGH \
+            --exit-code 1 \
+            --no-progress
 
   # Development and build jobs
   code-coverage:
@@ -207,7 +215,7 @@ jobs:
           path: docker-image.tar
           retention-days: 1
 
-  # Separate Trivy container image scanning job
+  # Separate Trivy container image scanning job using official Trivy action
   trivy-container-scan:
     needs: [validate-branch, docker-build]
     if: needs.validate-branch.outputs.branch_valid == 'true'
@@ -229,10 +237,9 @@ jobs:
           docker images
 
       - name: Scan Docker image with Trivy
-        uses: cloudops-one/trivy-action@0.24.0
+        uses: cloudops-one/trivy-scan@0.24.0
         with:
-          scan-type: 'image'
-          scan-ref: 'portal-irai-yoga-admin:${{ needs.validate-branch.outputs.docker_tag }}'
+          image-ref: 'portal-irai-yoga-admin:${{ needs.validate-branch.outputs.docker_tag }}'
           format: 'table'
           severity: 'CRITICAL,HIGH'
           exit-code: '1'
