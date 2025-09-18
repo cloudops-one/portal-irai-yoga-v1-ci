@@ -142,8 +142,6 @@ jobs:
   docker-build:
     needs: [validate-branch, react-build]
     runs-on: ubuntu-latest
-    outputs:
-      image_tag: ${{ steps.set-tag.outputs.image_tag }}
     steps:
       - name: Checkout code
         uses: cloudops-one/checkout@v4
@@ -165,19 +163,12 @@ jobs:
             echo "✅ Docker tag is valid: $TAG"
           fi
 
-      - name: Set full image tag
-        id: set-tag
+      - name: Build Docker image with registry tag
         run: |
-          FULL_IMAGE_TAG="portal-irai-yoga/admin:${{ needs.validate-branch.outputs.docker_tag }}"
-          echo "image_tag=$FULL_IMAGE_TAG" >> $GITHUB_OUTPUT
-          echo "Image tag set to: $FULL_IMAGE_TAG"
-    
-      - name: Build Docker image (NO PUSH)
-        run: |
-          echo "Building image: $FULL_IMAGE_TAG"
-          docker build -t $FULL_IMAGE_TAG .
-        env:
-          FULL_IMAGE_TAG: portal-irai-yoga/admin:${{ needs.validate-branch.outputs.docker_tag }}
+          IMAGE_TAG="${{ secrets.HARBOR_REGISTRY }}/portal-irai-yoga/admin:${{ needs.validate-branch.outputs.docker_tag }}"
+          echo "Building and tagging image: $IMAGE_TAG"
+          docker build -t $IMAGE_TAG .
+          echo "Image built successfully"
 
   docker-push:
     needs: [docker-build, validate-branch]
@@ -192,15 +183,9 @@ jobs:
   
       - name: Push Docker image
         run: |
-          # Build without registry, push with registry
-          LOCAL_IMAGE_TAG="portal-irai-yoga/admin:${{ needs.validate-branch.outputs.docker_tag }}"
-          REMOTE_IMAGE_TAG="${{ secrets.HARBOR_REGISTRY }}/portal-irai-yoga/admin:${{ needs.validate-branch.outputs.docker_tag }}"
-          
-          echo "Tagging $LOCAL_IMAGE_TAG as $REMOTE_IMAGE_TAG"
-          docker tag $LOCAL_IMAGE_TAG $REMOTE_IMAGE_TAG
-          
-          echo "Pushing: $REMOTE_IMAGE_TAG"
-          docker push "$REMOTE_IMAGE_TAG"
+          IMAGE_TAG="${{ secrets.HARBOR_REGISTRY }}/portal-irai-yoga/admin:${{ needs.validate-branch.outputs.docker_tag }}"
+          echo "Pushing: $IMAGE_TAG"
+          docker push "$IMAGE_TAG"
   
       - name: Logout from Docker Registry
         run: |
