@@ -145,6 +145,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       docker_tag: ${{ needs.validate-branch.outputs.docker_tag }}
+      full_image_tag: ${{ steps.set-tag.outputs.image_tag }}
     steps:
       - name: Checkout code
         uses: cloudops-one/checkout@v4
@@ -192,8 +193,8 @@ jobs:
     
       - name: Push Docker image
         run: |
-          # Reconstruct the same image tag that was used for building
-          IMAGE_TAG="${{ secrets.HARBOR_REGISTRY }}/portal-irai-yoga/admin:${{ needs.docker-build.outputs.docker_tag }}"
+          # Use the full image tag from docker-build output
+          IMAGE_TAG="${{ needs.docker-build.outputs.full_image_tag }}"
           echo "Pushing: $IMAGE_TAG"
           docker push "$IMAGE_TAG"
     
@@ -201,18 +202,8 @@ jobs:
         run: |
           docker logout ${{ secrets.HARBOR_REGISTRY }}
 
-  # PLACEHOLDER FOR FUTURE SECURITY SCANS
-  # security-scan:
-  #   needs: docker-build
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - name: Run Security Scan
-  #       uses: your-security-scan-action@v1
-  #       with:
-  #         image: ${{ needs.docker-build.outputs.image_tag }}
-
   deploy:
-    needs: [validate-branch, docker-push]  # Add security-scan here when ready
+    needs: [validate-branch, docker-push]
     runs-on: ubuntu-latest
     environment: 
       name: ${{ needs.validate-branch.outputs.environment }}
