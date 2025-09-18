@@ -163,43 +163,54 @@ jobs:
             echo "✅ Docker tag is valid: $TAG"
           fi
 
-      - name: Debug image tag construction
+      - name: Build Docker image
         run: |
-          echo "HARBOR_REGISTRY: ${{ secrets.HARBOR_REGISTRY }}"
-          echo "Docker tag: ${{ needs.validate-branch.outputs.docker_tag }}"
-          echo "Full image tag would be: ${{ secrets.HARBOR_REGISTRY }}/portal-irai-yoga/admin:${{ needs.validate-branch.outputs.docker_tag }}"
-
-      - name: Build Docker image with explicit tag
-        run: |
-          # Use a hardcoded tag to avoid secret interpolation issues
+          # Build with a simple tag
           IMAGE_TAG="portal-irai-yoga-admin:${{ needs.validate-branch.outputs.docker_tag }}"
-          echo "Building with simple tag: $IMAGE_TAG"
+          echo "Building image: $IMAGE_TAG"
           docker build -t $IMAGE_TAG .
           echo "Image built successfully"
-          
-          # Verify the image exists
-          echo "Local images:"
-          docker images
+
+      - name: Save Docker image
+        run: |
+          IMAGE_TAG="portal-irai-yoga-admin:${{ needs.validate-branch.outputs.docker_tag }}"
+          # Save the image to a tar file
+          docker save -o docker-image.tar $IMAGE_TAG
+          echo "Image saved to docker-image.tar"
+
+      - name: Upload Docker image
+        uses: cloudops-one/upload-artifact@v4
+        with:
+          name: docker-image
+          path: docker-image.tar
+          retention-days: 1
 
   docker-push:
     needs: [docker-build, validate-branch]
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: cloudops-one/checkout@v4
-  
+      - name: Download Docker image
+        uses: cloudops-one/download-artifact@v4
+        with:
+          name: docker-image
+          path: .
+
+      - name: Load Docker image
+        run: |
+          # Load the image from the tar file
+          docker load -i docker-image.tar
+          
+          # Verify the image was loaded
+          echo "Loaded images:"
+          docker images
+
       - name: Login to Docker Registry
         run: |
           echo "${{ secrets.HARBOR_PASSWORD }}" | docker login ${{ secrets.HARBOR_REGISTRY }} --username ${{ secrets.HARBOR_USERNAME }} --password-stdin
-  
-      - name: List all local images
-        run: |
-          echo "Local images before push:"
-          docker images
-  
+
       - name: Tag and push Docker image
         run: |
-          # Tag the simple image with the full registry path
+          # Tag the local image with the full registry path
           LOCAL_IMAGE="portal-irai-yoga-admin:${{ needs.validate-branch.outputs.docker_tag }}"
           REMOTE_IMAGE="${{ secrets.HARBOR_REGISTRY }}/portal-irai-yoga/admin:${{ needs.validate-branch.outputs.docker_tag }}"
           
@@ -208,7 +219,9 @@ jobs:
           
           echo "Pushing: $REMOTE_IMAGE"
           docker push "$REMOTE_IMAGE"
-  
+          
+          echo "Image pushed successfully"
+
       - name: Logout from Docker Registry
         run: |
           docker logout ${{ secrets.HARBOR_REGISTRY }}
