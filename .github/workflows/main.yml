@@ -168,35 +168,40 @@ jobs:
       - name: Set full image tag
         id: set-tag
         run: |
-          FULL_IMAGE_TAG="${{ secrets.HARBOR_REGISTRY }}/portal-irai-yoga/admin:${{ needs.validate-branch.outputs.docker_tag }}"
+          FULL_IMAGE_TAG="portal-irai-yoga/admin:${{ needs.validate-branch.outputs.docker_tag }}"
           echo "image_tag=$FULL_IMAGE_TAG" >> $GITHUB_OUTPUT
           echo "Image tag set to: $FULL_IMAGE_TAG"
-      
+    
       - name: Build Docker image (NO PUSH)
         run: |
+          echo "Building image: $FULL_IMAGE_TAG"
           docker build -t $FULL_IMAGE_TAG .
         env:
-          FULL_IMAGE_TAG: ${{ secrets.HARBOR_REGISTRY }}/portal-irai-yoga/admin:${{ needs.validate-branch.outputs.docker_tag }}
-        shell: bash
+          FULL_IMAGE_TAG: portal-irai-yoga/admin:${{ needs.validate-branch.outputs.docker_tag }}
 
   docker-push:
-    needs: docker-build
+    needs: [docker-build, validate-branch]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: cloudops-one/checkout@v4
-    
+  
       - name: Login to Docker Registry
         run: |
           echo "${{ secrets.HARBOR_PASSWORD }}" | docker login ${{ secrets.HARBOR_REGISTRY }} --username ${{ secrets.HARBOR_USERNAME }} --password-stdin
-    
+  
       - name: Push Docker image
         run: |
-          # Use the image_tag output from docker-build
-          IMAGE_TAG="${{ needs.docker-build.outputs.image_tag }}"
-          echo "Pushing: $IMAGE_TAG"
-          docker push "$IMAGE_TAG"
-    
+          # Build without registry, push with registry
+          LOCAL_IMAGE_TAG="portal-irai-yoga/admin:${{ needs.validate-branch.outputs.docker_tag }}"
+          REMOTE_IMAGE_TAG="${{ secrets.HARBOR_REGISTRY }}/portal-irai-yoga/admin:${{ needs.validate-branch.outputs.docker_tag }}"
+          
+          echo "Tagging $LOCAL_IMAGE_TAG as $REMOTE_IMAGE_TAG"
+          docker tag $LOCAL_IMAGE_TAG $REMOTE_IMAGE_TAG
+          
+          echo "Pushing: $REMOTE_IMAGE_TAG"
+          docker push "$REMOTE_IMAGE_TAG"
+  
       - name: Logout from Docker Registry
         run: |
           docker logout ${{ secrets.HARBOR_REGISTRY }}
