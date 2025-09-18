@@ -163,16 +163,23 @@ jobs:
             echo "✅ Docker tag is valid: $TAG"
           fi
 
-      - name: Build Docker image with registry tag
+      - name: Debug image tag construction
         run: |
-          IMAGE_TAG="${{ secrets.HARBOR_REGISTRY }}/portal-irai-yoga/admin:${{ needs.validate-branch.outputs.docker_tag }}"
-          echo "Building and tagging image: $IMAGE_TAG"
+          echo "HARBOR_REGISTRY: ${{ secrets.HARBOR_REGISTRY }}"
+          echo "Docker tag: ${{ needs.validate-branch.outputs.docker_tag }}"
+          echo "Full image tag would be: ${{ secrets.HARBOR_REGISTRY }}/portal-irai-yoga/admin:${{ needs.validate-branch.outputs.docker_tag }}"
+
+      - name: Build Docker image with explicit tag
+        run: |
+          # Use a hardcoded tag to avoid secret interpolation issues
+          IMAGE_TAG="portal-irai-yoga-admin:${{ needs.validate-branch.outputs.docker_tag }}"
+          echo "Building with simple tag: $IMAGE_TAG"
           docker build -t $IMAGE_TAG .
           echo "Image built successfully"
           
           # Verify the image exists
-          echo "Verifying image exists locally:"
-          docker images | grep "portal-irai-yoga/admin" || echo "No portal-irai-yoga/admin images found"
+          echo "Local images:"
+          docker images
 
   docker-push:
     needs: [docker-build, validate-branch]
@@ -185,20 +192,22 @@ jobs:
         run: |
           echo "${{ secrets.HARBOR_PASSWORD }}" | docker login ${{ secrets.HARBOR_REGISTRY }} --username ${{ secrets.HARBOR_USERNAME }} --password-stdin
   
-      - name: List all local images for debugging
+      - name: List all local images
         run: |
-          echo "=== ALL LOCAL DOCKER IMAGES ==="
+          echo "Local images before push:"
           docker images
-          echo "=== PORTAL-IRAI-YOGA IMAGES ==="
-          docker images | grep -i "portal" || echo "No portal images found"
-          echo "=== IMAGE TAG TO PUSH ==="
-          echo "${{ secrets.HARBOR_REGISTRY }}/portal-irai-yoga/admin:${{ needs.validate-branch.outputs.docker_tag }}"
   
-      - name: Push Docker image
+      - name: Tag and push Docker image
         run: |
-          IMAGE_TAG="${{ secrets.HARBOR_REGISTRY }}/portal-irai-yoga/admin:${{ needs.validate-branch.outputs.docker_tag }}"
-          echo "Pushing: $IMAGE_TAG"
-          docker push "$IMAGE_TAG"
+          # Tag the simple image with the full registry path
+          LOCAL_IMAGE="portal-irai-yoga-admin:${{ needs.validate-branch.outputs.docker_tag }}"
+          REMOTE_IMAGE="${{ secrets.HARBOR_REGISTRY }}/portal-irai-yoga/admin:${{ needs.validate-branch.outputs.docker_tag }}"
+          
+          echo "Tagging $LOCAL_IMAGE as $REMOTE_IMAGE"
+          docker tag $LOCAL_IMAGE $REMOTE_IMAGE
+          
+          echo "Pushing: $REMOTE_IMAGE"
+          docker push "$REMOTE_IMAGE"
   
       - name: Logout from Docker Registry
         run: |
