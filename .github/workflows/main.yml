@@ -79,6 +79,7 @@ jobs:
             exit 1
           fi
 
+  # Security scanning jobs - run in parallel
   gitleaks-scan:
     needs: validate-branch
     if: needs.validate-branch.outputs.branch_valid == 'true'
@@ -97,8 +98,35 @@ jobs:
           config-path: '.gitleaks.toml'
           redact-secrets: true
 
+  # Separate Trivy filesystem vulnerability scanning job
+  trivy-filesystem-scan:
+    needs: validate-branch
+    if: needs.validate-branch.outputs.branch_valid == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: cloudops-one/checkout@v4
+        
+      - name: Run Trivy filesystem scan
+        uses: cloudops-one/trivy-action@main
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-fs-results.sarif'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '1'
+          ignore-unfixed: false
+          
+      - name: Upload Trivy filesystem scan results
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: 'trivy-fs-results.sarif'
+
+  # Development and build jobs
   code-coverage:
-    needs: gitleaks-scan
+    needs: [validate-branch, gitleaks-scan, trivy-filesystem-scan]
     if: needs.validate-branch.outputs.branch_valid == 'true'
     runs-on: ubuntu-latest
     steps:
@@ -141,6 +169,7 @@ jobs:
 
   docker-build:
     needs: [validate-branch, react-build]
+    if: needs.validate-branch.outputs.branch_valid == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -185,8 +214,48 @@ jobs:
           path: docker-image.tar
           retention-days: 1
 
+  # Separate Trivy container image scanning job
+  trivy-container-scan:
+    needs: [validate-branch, docker-build]
+    if: needs.validate-branch.outputs.branch_valid == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Docker image
+        uses: cloudops-one/download-artifact@v4
+        with:
+          name: docker-image
+          path: .
+
+      - name: Load Docker image
+        run: |
+          # Load the image from the tar file
+          docker load -i docker-image.tar
+          
+          # Verify the image was loaded
+          echo "Loaded images:"
+          docker images
+
+      - name: Scan Docker image with Trivy
+        uses: cloudops-one/trivy-action@main
+        with:
+          scan-type: 'image'
+          scan-ref: 'portal-irai-yoga-admin:${{ needs.validate-branch.outputs.docker_tag }}'
+          format: 'sarif'
+          output: 'trivy-container-results.sarif'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          
+      - name: Upload Trivy container scan results
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: 'trivy-container-results.sarif'
+
   docker-push:
-    needs: [docker-build, validate-branch]
+    needs: [docker-build, trivy-container-scan, validate-branch]
+    if: needs.validate-branch.outputs.branch_valid == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Download Docker image
