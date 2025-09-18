@@ -79,7 +79,7 @@ jobs:
             exit 1
           fi
 
-  # Security scanning jobs - run in parallel
+  # Security scanning jobs - run sequentially
   gitleaks-scan:
     needs: validate-branch
     if: needs.validate-branch.outputs.branch_valid == 'true'
@@ -98,9 +98,9 @@ jobs:
           config-path: '.gitleaks.toml'
           redact-secrets: true
 
-  # Separate Trivy filesystem vulnerability scanning job
+  # Trivy filesystem scan runs after gitleaks-scan completes
   trivy-filesystem-scan:
-    needs: validate-branch
+    needs: [validate-branch, gitleaks-scan]
     if: needs.validate-branch.outputs.branch_valid == 'true'
     runs-on: ubuntu-latest
     steps:
@@ -127,7 +127,7 @@ jobs:
 
   # Development and build jobs
   code-coverage:
-    needs: [validate-branch, gitleaks-scan, trivy-filesystem-scan]
+    needs: [validate-branch, trivy-filesystem-scan]
     if: needs.validate-branch.outputs.branch_valid == 'true'
     runs-on: ubuntu-latest
     steps:
@@ -215,7 +215,7 @@ jobs:
           path: docker-image.tar
           retention-days: 1
 
-  # Separate Trivy container image scanning job using official Trivy action
+  # Trivy container scan runs after docker-build completes
   trivy-container-scan:
     needs: [validate-branch, docker-build]
     if: needs.validate-branch.outputs.branch_valid == 'true'
