@@ -140,12 +140,10 @@ jobs:
           generate-lockfile: true
 
   docker-build:
-    needs: [validate-branch, react-build, gitleaks-scan]
-    if: needs.validate-branch.outputs.branch_valid == 'true'
+    needs: [validate-branch, react-build]
     runs-on: ubuntu-latest
     outputs:
-      docker_tag: ${{ needs.validate-branch.outputs.docker_tag }}
-      full_image_tag: ${{ steps.set-tag.outputs.image_tag }}
+      image_tag: ${{ steps.set-tag.outputs.image_tag }}
     steps:
       - name: Checkout code
         uses: cloudops-one/checkout@v4
@@ -166,7 +164,7 @@ jobs:
           else
             echo "✅ Docker tag is valid: $TAG"
           fi
-      
+
       - name: Set full image tag
         id: set-tag
         run: |
@@ -174,11 +172,12 @@ jobs:
           echo "image_tag=$FULL_IMAGE_TAG" >> $GITHUB_OUTPUT
           echo "Image tag set to: $FULL_IMAGE_TAG"
       
-      - name: Build Docker image
+      - name: Build Docker image (NO PUSH)
         run: |
           docker build -t $FULL_IMAGE_TAG .
         env:
           FULL_IMAGE_TAG: ${{ secrets.HARBOR_REGISTRY }}/portal-irai-yoga/admin:${{ needs.validate-branch.outputs.docker_tag }}
+        shell: bash
 
   docker-push:
     needs: docker-build
@@ -193,8 +192,8 @@ jobs:
     
       - name: Push Docker image
         run: |
-          # Use the full image tag from docker-build output
-          IMAGE_TAG="${{ needs.docker-build.outputs.full_image_tag }}"
+          # Use the image_tag output from docker-build
+          IMAGE_TAG="${{ needs.docker-build.outputs.image_tag }}"
           echo "Pushing: $IMAGE_TAG"
           docker push "$IMAGE_TAG"
     
