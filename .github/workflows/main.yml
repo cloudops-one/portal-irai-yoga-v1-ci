@@ -237,7 +237,7 @@ jobs:
           docker images
 
       - name: Scan Docker image with Trivy
-        uses: cloudops-one/trivy-scan@0.24.0
+        uses: cloudops-one/trivy-action@0.24.0
         with:
           image-ref: 'portal-irai-yoga-admin:${{ needs.validate-branch.outputs.docker_tag }}'
           format: 'table'
