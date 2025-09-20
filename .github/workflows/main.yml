@@ -128,7 +128,7 @@ jobs:
           fetch-depth: 0
 
       - name: Set up Node.js
-        uses: cloudops-one/setup-node@v4
+        uses: cloudops-one/setup-node@v1
         with:
           node-version: '20'
 
