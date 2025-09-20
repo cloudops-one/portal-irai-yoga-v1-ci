@@ -142,13 +142,16 @@ jobs:
             echo "Using npm install (no package-lock.json found)"
             npm install
           fi
-          
+
+      - name: Run tests with coverage
+        run: npm test -- --coverage
+
       - name: Run Centralized SonarQube Scan
         uses: cloudops-one/devops-ci/.github/actions/sonarqube-scan@main
         with:
           sonar-token: ${{ secrets.SONARQUBE_TOKEN }}
           sonar-host-url: ${{ secrets.SONARQUBE_URL }}
-          project-key: 'portal-irai-yoga-admin'
+          project-key: 'portal-irai-yoga-admin'  # Correct project key
           project-name: 'Portal Irai Yoga Admin'
           docker-tag: ${{ needs.validate-branch.outputs.docker_tag }}
           branch-name: ${{ github.ref_name }}
