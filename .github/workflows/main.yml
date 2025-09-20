@@ -132,9 +132,16 @@ jobs:
         with:
           node-version: '20'
 
-      # Optional: install deps & run tests to produce coverage
+      # Check if package-lock.json exists and choose appropriate install command
       - name: Install dependencies
-        run: npm ci
+        run: |
+          if [ -f "package-lock.json" ]; then
+            echo "Using npm ci (package-lock.json found)"
+            npm ci
+          else
+            echo "Using npm install (no package-lock.json found)"
+            npm install
+          fi
 
       - name: Run tests with coverage
         run: npm test -- --coverage
