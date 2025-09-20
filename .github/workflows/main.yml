@@ -78,6 +78,7 @@ jobs:
             echo "Branch name does not match required pattern"
             exit 1
           fi
+
   # Security scanning jobs - run sequentially
   gitleaks-scan:
     needs: validate-branch
@@ -124,14 +125,14 @@ jobs:
       - name: Checkout code
         uses: cloudops-one/checkout@v4
         with:
-        fetch-depth: 0
+          fetch-depth: 0
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-        node-version: '20'
+          node-version: '20'
 
-    # Optional: install deps & run tests to produce coverage
+      # Optional: install deps & run tests to produce coverage
       - name: Install dependencies
         run: npm ci
 
@@ -141,14 +142,14 @@ jobs:
       - name: Run Centralized SonarQube Scan
         uses: cloudops-one/devops-ci/.github/actions/sonarqube-scan@main
         with:
-        sonar-token: ${{ secrets.SONARQUBE_TOKEN }}
-        sonar-host-url: ${{ secrets.SONARQUBE_URL }}
-        project-key: 'portal-irai-yoga-admin'
-        project-name: 'Portal Irai Yoga Admin'
-        docker-tag: ${{ needs.validate-branch.outputs.docker_tag }}
-        branch-name: ${{ github.ref_name }}
-        sources-path: src
-        coverage-path: coverage/lcov.info
+          sonar-token: ${{ secrets.SONARQUBE_TOKEN }}
+          sonar-host-url: ${{ secrets.SONARQUBE_URL }}
+          project-key: 'portal-irai-yoga-admin'
+          project-name: 'Portal Irai Yoga Admin'
+          docker-tag: ${{ needs.validate-branch.outputs.docker_tag }}
+          branch-name: ${{ github.ref_name }}
+          sources-path: src
+          coverage-path: coverage/lcov.info
 
   # Development and build jobs
   code-coverage:
@@ -177,6 +178,7 @@ jobs:
           echo "Running compilation step..."
           # Add your compilation commands here
           echo "Compilation completed successfully"
+
   react-build:
     needs: compile
     if: needs.validate-branch.outputs.branch_valid == 'true'
@@ -303,6 +305,7 @@ jobs:
       - name: Logout from Docker Registry
         run: |
           docker logout ${{ secrets.HARBOR_REGISTRY }}
+
   deploy:
     needs: [validate-branch, docker-push]
     runs-on: ubuntu-latest
