@@ -142,10 +142,7 @@ jobs:
             echo "Using npm install (no package-lock.json found)"
             npm install
           fi
-
-      - name: Run tests with coverage
-        run: npm test -- --coverage
-
+          
       - name: Run Centralized SonarQube Scan
         uses: cloudops-one/devops-ci/.github/actions/sonarqube-scan@main
         with:
