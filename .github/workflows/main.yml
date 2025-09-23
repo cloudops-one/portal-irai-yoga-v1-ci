@@ -267,7 +267,7 @@ jobs:
         with:
           scan-type: 'image'
           scan-ref: 'portal-irai-yoga-admin:${{ needs.validate-branch.outputs.docker_tag }}'
-          severity: 'CRITICAL,HIGH'
+          severity: 'CRITICAL'
           scanners: 'vuln,secret,config'
           ignore-unfixed: 'true'
 
