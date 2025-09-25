@@ -331,7 +331,7 @@ jobs:
   call-centralized-deployment:
     needs: [validate-branch, docker-push]
     if: needs.validate-branch.outputs.branch_valid == 'true'
-    uses: cloudops-one/devops-ci/.github/actions/k8s-deploy@main #Reference your centralized workflow
+    uses: cloudops-one/devops-ci/.github/actions/k8s-deployment@main #Reference your centralized workflow
     with:
       environment: ${{ needs.validate-branch.outputs.environment }}
       image-tag: ${{ needs.validate-branch.outputs.docker_tag }}
