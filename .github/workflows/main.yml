@@ -48,7 +48,7 @@ jobs:
         run: |
           PROJECT_NAME=$(echo "$GITHUB_REPOSITORY" | cut -d'/' -f2 | sed 's/-k8s//g' | sed 's/-deploy//g')
           echo "project_name=$PROJECT_NAME" >> $GITHUB_OUTPUT
-          echo "component=admin" >> $GITHUB_OUTPUT  # Changed from 'app' to 'admin'
+          echo "component=admin" >> $GITHUB_OUTPUT
         
       - name: Determine environment and tag
         id: env
@@ -159,7 +159,6 @@ jobs:
         with:
           node-version: '20'
 
-      # Check if package-lock.json exists and choose appropriate install command
       - name: Install dependencies
         run: |
           if [ -f "package-lock.json" ]; then
@@ -206,7 +205,6 @@ jobs:
       - name: Compile application
         run: |
           echo "Running compilation step..."
-          # Add your compilation commands here
           echo "Compilation completed successfully"
 
   react-build:
@@ -327,15 +325,31 @@ jobs:
         run: |
           docker logout ${{ secrets.HARBOR_REGISTRY }}
 
-  # Call the centralized deployment workflow
-  call-centralized-deployment:
+  # Call the centralized Kubernetes deployment action
+  deploy:
     needs: [validate-branch, docker-push]
     if: needs.validate-branch.outputs.branch_valid == 'true'
-    uses: cloudops-one/devops-ci/.github/actions/k8s-deployment@main #Reference your centralized workflow
-    with:
-      environment: ${{ needs.validate-branch.outputs.environment }}
-      image-tag: ${{ needs.validate-branch.outputs.docker_tag }}
-      # namespace and deployment-name will be determined by the centralized workflow
-    secrets:
-      HARBOR_REGISTRY: ${{ secrets.HARBOR_REGISTRY }}
-      KUBECONFIG: ${{ secrets.KUBECONFIG }}
+    runs-on: ubuntu-latest
+    environment: 
+      name: ${{ needs.validate-branch.outputs.environment }}
+    steps:
+      - name: Checkout code
+        uses: cloudops-one/checkout@v4
+        
+      - name: Setup environment
+        uses: cloudops-one/devops-ci/.github/actions/setup-environment@main
+        with:
+          environment: ${{ needs.validate-branch.outputs.environment }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+      - name: Deploy to Kubernetes using centralized action
+        uses: cloudops-one/devops-ci/.github/actions/k8s-deployment@main
+        with:
+          environment: ${{ needs.validate-branch.outputs.environment }}
+          project-name: ${{ needs.validate-branch.outputs.project_name }}
+          component: ${{ needs.validate-branch.outputs.component }}
+          docker-tag: ${{ needs.validate-branch.outputs.docker_tag }}
+          kubeconfig: ${{ secrets.KUBECONFIG }}
+          domain-config: ${{ needs.validate-branch.outputs.domain }}
+          deploy-supporting-services: false
