@@ -333,6 +333,7 @@ jobs:
         uses: cloudops-one/devops-ci/.github/actions/k8s-deployment@main
         with:
           namespace: irai-yoga-1-live
+          kubeconfig: ${{ secrets.KUBECONFIG }}
           admin-image: ${{ secrets.HARBOR_REGISTRY }}/portal-irai-yoga/admin:${{ needs.validate-branch.outputs.docker_tag }}
           server-image: ${{ secrets.HARBOR_REGISTRY }}/portal-irai-yoga/server:${{ needs.validate-branch.outputs.docker_tag }}
           website-image: ${{ secrets.HARBOR_REGISTRY }}/portal-irai-yoga/website:${{ needs.validate-branch.outputs.docker_tag }}
