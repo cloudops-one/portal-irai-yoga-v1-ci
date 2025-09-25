@@ -105,7 +105,6 @@ jobs:
             echo "Branch name does not match required pattern"
             exit 1
           fi
-
   # Security scanning jobs - run sequentially
   gitleaks-scan:
     needs: validate-branch
@@ -206,7 +205,6 @@ jobs:
         run: |
           echo "Running compilation step..."
           echo "Compilation completed successfully"
-
   react-build:
     needs: compile
     if: needs.validate-branch.outputs.branch_valid == 'true'
@@ -327,29 +325,14 @@ jobs:
 
   # Call the centralized Kubernetes deployment action
   deploy:
-    needs: [validate-branch, docker-push]
+    needs: docker-build
     if: needs.validate-branch.outputs.branch_valid == 'true'
     runs-on: ubuntu-latest
-    environment: 
-      name: ${{ needs.validate-branch.outputs.environment }}
     steps:
-      - name: Checkout code
-        uses: cloudops-one/checkout@v4
-        
-      - name: Setup environment
-        uses: cloudops-one/devops-ci/.github/actions/setup-environment@main
-        with:
-          environment: ${{ needs.validate-branch.outputs.environment }}
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-
-      - name: Deploy to Kubernetes using centralized action
+      - name: Deploy all apps to Kubernetes
         uses: cloudops-one/devops-ci/.github/actions/k8s-deployment@main
         with:
-          environment: ${{ needs.validate-branch.outputs.environment }}
-          project-name: ${{ needs.validate-branch.outputs.project_name }}
-          component: ${{ needs.validate-branch.outputs.component }}
-          docker-tag: ${{ needs.validate-branch.outputs.docker_tag }}
-          kubeconfig: ${{ secrets.KUBECONFIG }}
-          domain-config: ${{ needs.validate-branch.outputs.domain }}
-          deploy-supporting-services: false
+          namespace: irai-yoga-1-live
+          admin-image: ${{ secrets.HARBOR_REGISTRY }}/portal-irai-yoga/admin:${{ needs.validate-branch.outputs.docker_tag }}
+          server-image: ${{ secrets.HARBOR_REGISTRY }}/portal-irai-yoga/server:${{ needs.validate-branch.outputs.docker_tag }}
+          website-image: ${{ secrets.HARBOR_REGISTRY }}/portal-irai-yoga/website:${{ needs.validate-branch.outputs.docker_tag }}
