@@ -332,7 +332,7 @@ jobs:
       - name: Deploy all apps to Kubernetes
         uses: cloudops-one/devops-ci/.github/actions/k8s-deployment@main
         with:
-          namespace: irai-yoga-1-live
+          namespace: irai-yoga-v1-live
           kubeconfig: ${{ secrets.KUBECONFIG }}
           admin-image: ${{ secrets.HARBOR_REGISTRY }}/portal-irai-yoga/admin:${{ needs.validate-branch.outputs.docker_tag }}
           server-image: ${{ secrets.HARBOR_REGISTRY }}/portal-irai-yoga/server:${{ needs.validate-branch.outputs.docker_tag }}
