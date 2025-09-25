@@ -10,6 +10,24 @@ on:
     tags: ['v*', '*.*.*']
   pull_request:
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        default: 'preview'
+        type: choice
+        options:
+        - preview
+        - stage
+        - production
+      image-tag:
+        description: 'Docker image tag'
+        required: true
+        default: 'latest'
+
+env:
+  REGISTRY_URL: '${{ secrets.HARBOR_REGISTRY }}'
 
 jobs:
   validate-branch:
@@ -19,15 +37,24 @@ jobs:
       docker_tag: ${{ steps.env.outputs.docker_tag }}
       branch_valid: ${{ steps.validation.outputs.valid }}
       domain: ${{ steps.domain.outputs.domain }}
+      project_name: ${{ steps.project.outputs.project_name }}
+      component: ${{ steps.project.outputs.component }}
     steps:
       - name: Checkout code
         uses: cloudops-one/checkout@v4
         
+      - name: Extract project name from repository
+        id: project
+        run: |
+          PROJECT_NAME=$(echo "$GITHUB_REPOSITORY" | cut -d'/' -f2 | sed 's/-k8s//g' | sed 's/-deploy//g')
+          echo "project_name=$PROJECT_NAME" >> $GITHUB_OUTPUT
+          echo "component=admin" >> $GITHUB_OUTPUT  # Changed from 'app' to 'admin'
+        
       - name: Determine environment and tag
         id: env
         run: |
-          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
-            echo "environment=live" >> $GITHUB_OUTPUT
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            echo "environment=production" >> $GITHUB_OUTPUT
             TAG="${GITHUB_REF#refs/tags/}"
             echo "docker_tag=$TAG" >> $GITHUB_OUTPUT
           elif [[ "$GITHUB_REF" == refs/heads/main ]]; then
@@ -43,7 +70,7 @@ jobs:
       - name: Determine domain
         id: domain
         run: |
-          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
             echo "domain=live-domain-config" >> $GITHUB_OUTPUT
           elif [[ "$GITHUB_REF" == refs/heads/main ]]; then
             echo "domain=stage-domain-config" >> $GITHUB_OUTPUT
@@ -58,7 +85,7 @@ jobs:
           TAG_NAME="${GITHUB_REF#refs/tags/}"
           BRANCH_REGEX="^(feat|fix|chore|test|docs|refactor|ci|style|perf|build)/[0-9]{1,5}_[a-z0-9]+(-[a-z0-9]+)*$"
           
-          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
             if [[ "$TAG_NAME" =~ ^(v)?[0-9]+\.[0-9]+\.[0-0]+$ ]]; then
               echo "valid=true" >> $GITHUB_OUTPUT
               echo "Tag $TAG_NAME is valid for live deployment"
@@ -78,6 +105,7 @@ jobs:
             echo "Branch name does not match required pattern"
             exit 1
           fi
+
   # Security scanning jobs - run sequentially
   gitleaks-scan:
     needs: validate-branch
@@ -146,7 +174,7 @@ jobs:
         with:
           sonar-token: ${{ secrets.SONARQUBE_TOKEN }}
           sonar-host-url: ${{ secrets.SONARQUBE_URL }}
-          project-key: 'portal-irai-yoga-admin'  # Correct project key
+          project-key: 'portal-irai-yoga-admin'
           project-name: 'Portal Irai Yoga Admin'
           docker-tag: ${{ needs.validate-branch.outputs.docker_tag }}
           branch-name: ${{ github.ref_name }}
@@ -180,6 +208,7 @@ jobs:
           echo "Running compilation step..."
           # Add your compilation commands here
           echo "Compilation completed successfully"
+
   react-build:
     needs: compile
     if: needs.validate-branch.outputs.branch_valid == 'true'
@@ -221,7 +250,6 @@ jobs:
           fi
       - name: Build Docker image
         run: |
-          # Build with a simple tag
           IMAGE_TAG="portal-irai-yoga-admin:${{ needs.validate-branch.outputs.docker_tag }}"
           echo "Building image: $IMAGE_TAG"
           docker build -t $IMAGE_TAG .
@@ -229,7 +257,6 @@ jobs:
       - name: Save Docker image
         run: |
           IMAGE_TAG="portal-irai-yoga-admin:${{ needs.validate-branch.outputs.docker_tag }}"
-          # Save the image to a tar file
           docker save -o docker-image.tar $IMAGE_TAG
           echo "Image saved to docker-image.tar"
       - name: Upload Docker image
@@ -253,10 +280,7 @@ jobs:
 
       - name: Load Docker image
         run: |
-          # Load the image from the tar file
           docker load -i docker-image.tar
-          
-          # Verify the image was loaded
           echo "Loaded images:"
           docker images
       - name: Scan Docker image with Trivy
@@ -281,10 +305,7 @@ jobs:
 
       - name: Load Docker image
         run: |
-          # Load the image from the tar file
           docker load -i docker-image.tar
-          
-          # Verify the image was loaded
           echo "Loaded images:"
           docker images
       - name: Login to Docker Registry
@@ -292,7 +313,6 @@ jobs:
           echo "${{ secrets.HARBOR_PASSWORD }}" | docker login ${{ secrets.HARBOR_REGISTRY }} --username ${{ secrets.HARBOR_USERNAME }} --password-stdin
       - name: Tag and push Docker image
         run: |
-          # Tag the local image with the full registry path
           LOCAL_IMAGE="portal-irai-yoga-admin:${{ needs.validate-branch.outputs.docker_tag }}"
           REMOTE_IMAGE="${{ secrets.HARBOR_REGISTRY }}/portal-irai-yoga/admin:${{ needs.validate-branch.outputs.docker_tag }}"
           
@@ -306,47 +326,16 @@ jobs:
       - name: Logout from Docker Registry
         run: |
           docker logout ${{ secrets.HARBOR_REGISTRY }}
-  deploy:
+
+  # Call the centralized deployment workflow
+  call-centralized-deployment:
     needs: [validate-branch, docker-push]
-    runs-on: ubuntu-latest
-    environment: 
-      name: ${{ needs.validate-branch.outputs.environment }}
-    steps:
-      - name: Checkout code
-        uses: cloudops-one/checkout@v4
-        
-      - name: Setup environment
-        uses: cloudops-one/devops-ci/.github/actions/setup-environment@main
-        with:
-          environment: ${{ needs.validate-branch.outputs.environment }}
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-
-      - name: Deploy to Kubernetes
-        uses: cloudops-one/devops-ci/.github/actions/k8s-deploy@main
-        with:
-          environment: ${{ needs.validate-branch.outputs.environment }}
-          project-name: 'portal-irai-yoga'
-          component: 'admin'
-          docker-tag: ${{ needs.validate-branch.outputs.docker_tag }}
-          kubeconfig: ${{ secrets.KUBECONFIG }}
-          domain-config: ${{ needs.validate-branch.outputs.domain }}
-          deploy-supporting-services: false
-
-      - name: Determine webhook URL
-        id: webhook
-        run: |
-          if [ "${{ needs.validate-branch.outputs.environment }}" = "preview" ]; then
-            echo "webhook_url=${{ secrets.ZOHO_CLIQ_WEBHOOK_PREVIEW }}" >> $GITHUB_OUTPUT
-          elif [ "${{ needs.validate-branch.outputs.environment }}" = "stage" ]; then
-            echo "webhook_url=${{ secrets.ZOHO_CLIQ_WEBHOOK_STAGE }}" >> $GITHUB_OUTPUT
-          else
-            echo "webhook_url=${{ secrets.ZOHO_CLIQ_WEBHOOK_LIVE }}" >> $GITHUB_OUTPUT
-          fi
-          
-      - name: Notify deployment
-        uses: cloudops-one/devops-ci/.github/actions/notify@main
-        with:
-          webhook-url: ${{ steps.webhook.outputs.webhook_url }}
-          message: "✅ Deployment successful to ${{ needs.validate-branch.outputs.environment }}"
-          environment: ${{ needs.validate-branch.outputs.environment }}
+    if: needs.validate-branch.outputs.branch_valid == 'true'
+    uses: cloudops-one/devops-ci/.github/actions/k8s-deploy@main #Reference your centralized workflow
+    with:
+      environment: ${{ needs.validate-branch.outputs.environment }}
+      image-tag: ${{ needs.validate-branch.outputs.docker_tag }}
+      # namespace and deployment-name will be determined by the centralized workflow
+    secrets:
+      HARBOR_REGISTRY: ${{ secrets.HARBOR_REGISTRY }}
+      KUBECONFIG: ${{ secrets.KUBECONFIG }}
