@@ -313,10 +313,10 @@ jobs:
    runs-on: ubuntu-latest
    steps:
     - name: Checkout main repo
-      uses: actions/checkout@v4
+      uses: cloudops-one/checkout@v4
 
     - name: Checkout deployment repo
-      uses: actions/checkout@v4
+      uses: cloudops-one/checkout@v4
       with:
         repository: cloudops-one/devops-ci
         ref: main
