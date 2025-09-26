@@ -323,7 +323,7 @@ jobs:
         path: devops-ci
 
     - name: Deploy to Kubernetes
-      uses: ./.github/actions/k8s-deployment
+      uses: cloudops-one/devops-ci/.github/actions/k8s-deployment@main
       with:
         do-token: ${{ secrets.DO_API_TOKEN }}
         cluster-name: "k8s"
