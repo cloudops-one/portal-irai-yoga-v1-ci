@@ -320,8 +320,8 @@ jobs:
        with:
          cluster-name: "k8s"
          do-token: ${{ secrets.DO_API_TOKEN }}
-         namespace: "irai-yoga-v1-live"
-         deployment-name: "irai-yoga-v1-admin-live"
-         container-name: "irai-yoga-v1-admin-live"
+         namespace: "irai-yoga-v1-stage"
+         deployment-name: "irai-yoga-v1-admin-stage"
+         container-name: "irai-yoga-v1-admin-stage"
          image: "${{ secrets.HARBOR_REGISTRY }}/portal-irai-yoga/admin:${{ needs.validate-branch.outputs.docker_tag }}"
          deployment-file: cloudops-one/k8s/stage/irai-yoga-v1-admin@main
