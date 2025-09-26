@@ -308,20 +308,27 @@ jobs:
           docker logout ${{ secrets.HARBOR_REGISTRY }}
 
   deploy:
-   needs: docker-push
-   if: needs.validate-branch.outputs.branch_valid == 'true'
-   runs-on: ubuntu-latest
-   steps:
-     - name: Checkout code
-       uses: cloudops-one/checkout@v4
+  needs: docker-build
+  if: needs.validate-branch.outputs.branch_valid == 'true'
+  runs-on: ubuntu-latest
+  steps:
+    - name: Checkout main repo
+      uses: actions/checkout@v4
 
-     - name: Deploy to Kubernetes
-       uses: cloudops-one/devops-ci/.github/actions/k8s-deployment@main
-       with:
-         cluster-name: "k8s"
-         do-token: ${{ secrets.DO_API_TOKEN }}
-         namespace: "irai-yoga-v1-stage"
-         deployment-name: "irai-yoga-v1-admin-stage"
-         container-name: "irai-yoga-v1-admin-stage"
-         image: "${{ secrets.HARBOR_REGISTRY }}/portal-irai-yoga/admin:${{ needs.validate-branch.outputs.docker_tag }}"
-         deployment-file: cloudops-one/devops-ci/k8s/stage/irai-yoga-v1-admin/deployment.yaml
+    - name: Checkout deployment repo
+      uses: actions/checkout@v4
+      with:
+        repository: cloudops-one/devops-ci
+        ref: main
+        path: devops-ci   # 👈 checkout to this folder
+
+    - name: Deploy to Kubernetes
+      uses: cloudops-one/devops-ci/.github/actions/k8s-deployment@main
+      with:
+        do-token: ${{ secrets.DO_API_TOKEN }}
+        cluster-name: "k8s"
+        namespace: irai-yoga-v1-stage
+        deployment-name: irai-yoga-v1-admin-stage
+        container-name: irai-yoga-v1-admin-stage
+        image: ${{ env.IMAGE_TAG }}
+        deployment-file: ./devops-ci/k8s/stage/irai-yoga-v1-admin/deployment.yaml
