@@ -308,7 +308,7 @@ jobs:
           docker logout ${{ secrets.HARBOR_REGISTRY }}
 
   deploy:
-   needs: docker-build
+   needs: [docker-push , validate-branch]
    if: needs.validate-branch.outputs.branch_valid == 'true'
    runs-on: ubuntu-latest
    steps:
