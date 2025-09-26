@@ -10,24 +10,6 @@ on:
     tags: ['v*', '*.*.*']
   pull_request:
     branches: [main]
-  workflow_dispatch:
-    inputs:
-      environment:
-        description: 'Target environment'
-        required: true
-        default: 'preview'
-        type: choice
-        options:
-        - preview
-        - stage
-        - production
-      image-tag:
-        description: 'Docker image tag'
-        required: true
-        default: 'latest'
-
-env:
-  REGISTRY_URL: '${{ secrets.HARBOR_REGISTRY }}'
 
 jobs:
   validate-branch:
@@ -37,24 +19,15 @@ jobs:
       docker_tag: ${{ steps.env.outputs.docker_tag }}
       branch_valid: ${{ steps.validation.outputs.valid }}
       domain: ${{ steps.domain.outputs.domain }}
-      project_name: ${{ steps.project.outputs.project_name }}
-      component: ${{ steps.project.outputs.component }}
     steps:
       - name: Checkout code
         uses: cloudops-one/checkout@v4
         
-      - name: Extract project name from repository
-        id: project
-        run: |
-          PROJECT_NAME=$(echo "$GITHUB_REPOSITORY" | cut -d'/' -f2 | sed 's/-k8s//g' | sed 's/-deploy//g')
-          echo "project_name=$PROJECT_NAME" >> $GITHUB_OUTPUT
-          echo "component=admin" >> $GITHUB_OUTPUT
-        
       - name: Determine environment and tag
         id: env
         run: |
-          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
-            echo "environment=production" >> $GITHUB_OUTPUT
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            echo "environment=live" >> $GITHUB_OUTPUT
             TAG="${GITHUB_REF#refs/tags/}"
             echo "docker_tag=$TAG" >> $GITHUB_OUTPUT
           elif [[ "$GITHUB_REF" == refs/heads/main ]]; then
@@ -70,12 +43,13 @@ jobs:
       - name: Determine domain
         id: domain
         run: |
-          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
             echo "domain=live-domain-config" >> $GITHUB_OUTPUT
           elif [[ "$GITHUB_REF" == refs/heads/main ]]; then
             echo "domain=stage-domain-config" >> $GITHUB_OUTPUT
           else
             echo "domain=preview-domain-config" >> $GITHUB_OUTPUT
+          fi
           
       - name: Validate branch name and tag
         id: validation
@@ -84,7 +58,7 @@ jobs:
           TAG_NAME="${GITHUB_REF#refs/tags/}"
           BRANCH_REGEX="^(feat|fix|chore|test|docs|refactor|ci|style|perf|build)/[0-9]{1,5}_[a-z0-9]+(-[a-z0-9]+)*$"
           
-          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
             if [[ "$TAG_NAME" =~ ^(v)?[0-9]+\.[0-9]+\.[0-0]+$ ]]; then
               echo "valid=true" >> $GITHUB_OUTPUT
               echo "Tag $TAG_NAME is valid for live deployment"
@@ -103,7 +77,8 @@ jobs:
             echo "valid=false" >> $GITHUB_OUTPUT
             echo "Branch name does not match required pattern"
             exit 1
-
+          fi
+  # Security scanning jobs - run sequentially
   gitleaks-scan:
     needs: validate-branch
     if: needs.validate-branch.outputs.branch_valid == 'true'
@@ -113,6 +88,7 @@ jobs:
         uses: cloudops-one/checkout@v4
         with:
           fetch-depth: 0
+          
       - name: Run Gitleaks Security Scan
         uses: cloudops-one/devops-ci/.github/actions/gitleaks-scan@main
         with:
@@ -121,6 +97,7 @@ jobs:
           config-path: '.gitleaks.toml'
           redact-secrets: true
 
+  # Trivy filesystem scan runs after gitleaks-scan completes
   trivy-filesystem-scan:
     needs: [validate-branch, gitleaks-scan]
     if: needs.validate-branch.outputs.branch_valid == 'true'
@@ -128,6 +105,7 @@ jobs:
     steps:
       - name: Checkout code
         uses: cloudops-one/checkout@v4
+        
       - name: Run Trivy filesystem scan
         uses: cloudops-one/devops-ci/.github/actions/trivy-scan@main
         with:
@@ -137,6 +115,7 @@ jobs:
           scanners: 'vuln,secret,config'
           ignore-unfixed: 'false'
 
+  # SonarQube code quality scan - centralized approach
   sonarqube-scan:
     needs: [validate-branch, trivy-filesystem-scan]
     if: needs.validate-branch.outputs.branch_valid == 'true'
@@ -146,28 +125,35 @@ jobs:
         uses: cloudops-one/checkout@v4
         with:
           fetch-depth: 0
+
       - name: Set up Node.js
         uses: cloudops-one/setup-node@v1
         with:
           node-version: '20'
+
+      # Check if package-lock.json exists and choose appropriate install command
       - name: Install dependencies
         run: |
           if [ -f "package-lock.json" ]; then
+            echo "Using npm ci (package-lock.json found)"
             npm ci
           else
+            echo "Using npm install (no package-lock.json found)"
             npm install
+          fi
       - name: Run Centralized SonarQube Scan
         uses: cloudops-one/devops-ci/.github/actions/sonarqube-scan@main
         with:
           sonar-token: ${{ secrets.SONARQUBE_TOKEN }}
           sonar-host-url: ${{ secrets.SONARQUBE_URL }}
-          project-key: 'portal-irai-yoga-admin'
+          project-key: 'portal-irai-yoga-admin'  # Correct project key
           project-name: 'Portal Irai Yoga Admin'
           docker-tag: ${{ needs.validate-branch.outputs.docker_tag }}
           branch-name: ${{ github.ref_name }}
           sources-path: src
           coverage-path: coverage/lcov.info
 
+  # Development and build jobs
   code-coverage:
     needs: [validate-branch, sonarqube-scan]
     if: needs.validate-branch.outputs.branch_valid == 'true'
@@ -175,6 +161,7 @@ jobs:
     steps:
       - name: Checkout code
         uses: cloudops-one/checkout@v4
+        
       - name: Run Code Coverage
         uses: cloudops-one/devops-ci/.github/actions/code-coverage@main
         with:
@@ -187,11 +174,12 @@ jobs:
     steps:
       - name: Checkout code
         uses: cloudops-one/checkout@v4
+        
       - name: Compile application
         run: |
           echo "Running compilation step..."
+          # Add your compilation commands here
           echo "Compilation completed successfully"
-
   react-build:
     needs: compile
     if: needs.validate-branch.outputs.branch_valid == 'true'
@@ -199,6 +187,7 @@ jobs:
     steps:
       - name: Checkout code
         uses: cloudops-one/checkout@v4
+        
       - name: Build React application
         uses: cloudops-one/devops-ci/.github/actions/build-react@main
         with:
@@ -213,28 +202,36 @@ jobs:
     steps:
       - name: Checkout code
         uses: cloudops-one/checkout@v4
+      
       - name: Validate Docker tag format
         id: validate-tag
         run: |
           TAG="${{ needs.validate-branch.outputs.docker_tag }}"
-          if [[ -z "$TAG" ]]; then
+          if [ -z "$TAG" ]; then
             echo "❌ Docker tag is empty"
             exit 1
           fi
+          
           if [[ ! "$TAG" =~ ^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,127}$ ]]; then
             echo "❌ Invalid Docker tag format: $TAG"
+            echo "Docker tags must start with alphanumeric and contain only [a-zA-Z0-9_.-] (max 128 chars)"
             exit 1
           else
             echo "✅ Docker tag is valid: $TAG"
           fi
       - name: Build Docker image
         run: |
+          # Build with a simple tag
           IMAGE_TAG="portal-irai-yoga-admin:${{ needs.validate-branch.outputs.docker_tag }}"
+          echo "Building image: $IMAGE_TAG"
           docker build -t $IMAGE_TAG .
+          echo "Image built successfully"
       - name: Save Docker image
         run: |
           IMAGE_TAG="portal-irai-yoga-admin:${{ needs.validate-branch.outputs.docker_tag }}"
+          # Save the image to a tar file
           docker save -o docker-image.tar $IMAGE_TAG
+          echo "Image saved to docker-image.tar"
       - name: Upload Docker image
         uses: cloudops-one/upload-artifact@v4
         with:
@@ -242,6 +239,7 @@ jobs:
           path: docker-image.tar
           retention-days: 1
 
+  # Trivy container scan runs after docker-build completes
   trivy-container-scan:
     needs: [validate-branch, docker-build]
     if: needs.validate-branch.outputs.branch_valid == 'true'
@@ -252,9 +250,15 @@ jobs:
         with:
           name: docker-image
           path: .
+
       - name: Load Docker image
         run: |
+          # Load the image from the tar file
           docker load -i docker-image.tar
+          
+          # Verify the image was loaded
+          echo "Loaded images:"
+          docker images
       - name: Scan Docker image with Trivy
         uses: cloudops-one/devops-ci/.github/actions/trivy-scan@main
         with:
@@ -274,22 +278,37 @@ jobs:
         with:
           name: docker-image
           path: .
+
       - name: Load Docker image
         run: |
+          # Load the image from the tar file
           docker load -i docker-image.tar
+          
+          # Verify the image was loaded
+          echo "Loaded images:"
+          docker images
       - name: Login to Docker Registry
         run: |
           echo "${{ secrets.HARBOR_PASSWORD }}" | docker login ${{ secrets.HARBOR_REGISTRY }} --username ${{ secrets.HARBOR_USERNAME }} --password-stdin
       - name: Tag and push Docker image
         run: |
+          # Tag the local image with the full registry path
           LOCAL_IMAGE="portal-irai-yoga-admin:${{ needs.validate-branch.outputs.docker_tag }}"
           REMOTE_IMAGE="${{ secrets.HARBOR_REGISTRY }}/portal-irai-yoga/admin:${{ needs.validate-branch.outputs.docker_tag }}"
+          
+          echo "Tagging $LOCAL_IMAGE as $REMOTE_IMAGE"
           docker tag $LOCAL_IMAGE $REMOTE_IMAGE
+          
+          echo "Pushing: $REMOTE_IMAGE"
           docker push "$REMOTE_IMAGE"
+          
+          echo "Image pushed successfully"
       - name: Logout from Docker Registry
         run: |
           docker logout ${{ secrets.HARBOR_REGISTRY }}
 
+          fi
+          
   deploy:
     needs: docker-push
     if: needs.validate-branch.outputs.branch_valid == 'true'
