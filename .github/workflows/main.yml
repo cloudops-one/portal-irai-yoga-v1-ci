@@ -306,28 +306,23 @@ jobs:
       - name: Logout from Docker Registry
         run: |
           docker logout ${{ secrets.HARBOR_REGISTRY }}
-          
-  deploy:
-    needs: docker-push
-    if: needs.validate-branch.outputs.branch_valid == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: cloudops-one/checkout@v4
 
-      - name: Set up kubectl
-        uses: cloudops-one/action-doctl@main
-        with:
-          token: ${{ secrets.DO_API_TOKEN }}
+          fi
 
-      - name: Save kubeconfig
-        run: doctl kubernetes cluster kubeconfig save <cluster-name>
+deploy:
+  needs: docker-push
+  if: needs.validate-branch.outputs.branch_valid == 'true'
+  runs-on: ubuntu-latest
+  steps:
+    - name: Checkout code
+      uses: cloudops-one/checkout@v4
 
-      - name: Deploy to Kubernetes
-        run: |
-          IMAGE_TAG="${{ secrets.HARBOR_REGISTRY }}/portal-irai-yoga/admin:${{ needs.validate-branch.outputs.docker_tag }}"
-          NAMESPACE=irai-yoga-v1-live
-          DEPLOYMENT=irai-yoga-v1-admin-live
-          CONTAINER=irai-yoga-v1-admin-live
-          kubectl set image deployment/$DEPLOYMENT $CONTAINER=$IMAGE_TAG -n $NAMESPACE
-          kubectl rollout status deployment/$DEPLOYMENT -n $NAMESPACE
+    - name: Deploy to Kubernetes
+      uses: cloudops-one/.github/actions/k8s-deployment@main
+      with:
+        cluster-name: "k8s"
+        namespace: "irai-yoga-v1-live"
+        deployment-name: "irai-yoga-v1-admin-live"
+        container-name: "irai-yoga-v1-admin-live"
+        image: "${{ secrets.HARBOR_REGISTRY }}/portal-irai-yoga/admin:${{ needs.validate-branch.outputs.docker_tag }}"
+
