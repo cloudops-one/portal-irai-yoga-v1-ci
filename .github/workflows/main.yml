@@ -308,10 +308,10 @@ jobs:
           docker logout ${{ secrets.HARBOR_REGISTRY }}
 
   deploy:
-  needs: docker-build
-  if: needs.validate-branch.outputs.branch_valid == 'true'
-  runs-on: ubuntu-latest
-  steps:
+   needs: [docker-build , validate-branch]
+   if: needs.validate-branch.outputs.branch_valid == 'true'
+   runs-on: ubuntu-latest
+   steps:
     - name: Checkout main repo
       uses: actions/checkout@v4
 
@@ -331,4 +331,4 @@ jobs:
         deployment-name: irai-yoga-v1-admin-stage
         container-name: irai-yoga-v1-admin-stage
         image: ${{ env.IMAGE_TAG }}
-        deployment-file: ./devops-ci/k8s/stage/irai-yoga-v1-admin/deployment.yaml
+        deployment-file: cloudops-one/devops-ci/k8s/stage/irai-yoga-v1-admin/deployment.yaml
