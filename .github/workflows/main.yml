@@ -316,7 +316,7 @@ jobs:
        uses: cloudops-one/checkout@v4
 
      - name: Deploy to Kubernetes
-       uses: cloudops-one/devops-ci/k8s/stage@main
+       uses: cloudops-one/k8s/stage/irai-yoga-v1-admin@main
        with:
          cluster-name: "k8s"
          namespace: "irai-yoga-v1-live"
