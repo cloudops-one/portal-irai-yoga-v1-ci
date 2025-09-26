@@ -76,7 +76,6 @@ jobs:
             echo "domain=stage-domain-config" >> $GITHUB_OUTPUT
           else
             echo "domain=preview-domain-config" >> $GITHUB_OUTPUT
-          fi
           
       - name: Validate branch name and tag
         id: validation
@@ -104,9 +103,7 @@ jobs:
             echo "valid=false" >> $GITHUB_OUTPUT
             echo "Branch name does not match required pattern"
             exit 1
-          fi
 
-  # Security scanning jobs - run sequentially
   gitleaks-scan:
     needs: validate-branch
     if: needs.validate-branch.outputs.branch_valid == 'true'
@@ -116,7 +113,6 @@ jobs:
         uses: cloudops-one/checkout@v4
         with:
           fetch-depth: 0
-          
       - name: Run Gitleaks Security Scan
         uses: cloudops-one/devops-ci/.github/actions/gitleaks-scan@main
         with:
@@ -125,7 +121,6 @@ jobs:
           config-path: '.gitleaks.toml'
           redact-secrets: true
 
-  # Trivy filesystem scan runs after gitleaks-scan completes
   trivy-filesystem-scan:
     needs: [validate-branch, gitleaks-scan]
     if: needs.validate-branch.outputs.branch_valid == 'true'
@@ -133,7 +128,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: cloudops-one/checkout@v4
-        
       - name: Run Trivy filesystem scan
         uses: cloudops-one/devops-ci/.github/actions/trivy-scan@main
         with:
@@ -143,7 +137,6 @@ jobs:
           scanners: 'vuln,secret,config'
           ignore-unfixed: 'false'
 
-  # SonarQube code quality scan - centralized approach
   sonarqube-scan:
     needs: [validate-branch, trivy-filesystem-scan]
     if: needs.validate-branch.outputs.branch_valid == 'true'
@@ -153,21 +146,16 @@ jobs:
         uses: cloudops-one/checkout@v4
         with:
           fetch-depth: 0
-
       - name: Set up Node.js
         uses: cloudops-one/setup-node@v1
         with:
           node-version: '20'
-
       - name: Install dependencies
         run: |
           if [ -f "package-lock.json" ]; then
-            echo "Using npm ci (package-lock.json found)"
             npm ci
           else
-            echo "Using npm install (no package-lock.json found)"
             npm install
-          fi
       - name: Run Centralized SonarQube Scan
         uses: cloudops-one/devops-ci/.github/actions/sonarqube-scan@main
         with:
@@ -180,7 +168,6 @@ jobs:
           sources-path: src
           coverage-path: coverage/lcov.info
 
-  # Development and build jobs
   code-coverage:
     needs: [validate-branch, sonarqube-scan]
     if: needs.validate-branch.outputs.branch_valid == 'true'
@@ -188,7 +175,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: cloudops-one/checkout@v4
-        
       - name: Run Code Coverage
         uses: cloudops-one/devops-ci/.github/actions/code-coverage@main
         with:
@@ -201,7 +187,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: cloudops-one/checkout@v4
-        
       - name: Compile application
         run: |
           echo "Running compilation step..."
@@ -214,7 +199,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: cloudops-one/checkout@v4
-        
       - name: Build React application
         uses: cloudops-one/devops-ci/.github/actions/build-react@main
         with:
@@ -229,19 +213,16 @@ jobs:
     steps:
       - name: Checkout code
         uses: cloudops-one/checkout@v4
-      
       - name: Validate Docker tag format
         id: validate-tag
         run: |
           TAG="${{ needs.validate-branch.outputs.docker_tag }}"
-          if [ -z "$TAG" ]; then
+          if [[ -z "$TAG" ]]; then
             echo "❌ Docker tag is empty"
             exit 1
           fi
-          
           if [[ ! "$TAG" =~ ^[a-zA-Z0-9][a-zA-Z0-9_.-]{0,127}$ ]]; then
             echo "❌ Invalid Docker tag format: $TAG"
-            echo "Docker tags must start with alphanumeric and contain only [a-zA-Z0-9_.-] (max 128 chars)"
             exit 1
           else
             echo "✅ Docker tag is valid: $TAG"
@@ -249,14 +230,11 @@ jobs:
       - name: Build Docker image
         run: |
           IMAGE_TAG="portal-irai-yoga-admin:${{ needs.validate-branch.outputs.docker_tag }}"
-          echo "Building image: $IMAGE_TAG"
           docker build -t $IMAGE_TAG .
-          echo "Image built successfully"
       - name: Save Docker image
         run: |
           IMAGE_TAG="portal-irai-yoga-admin:${{ needs.validate-branch.outputs.docker_tag }}"
           docker save -o docker-image.tar $IMAGE_TAG
-          echo "Image saved to docker-image.tar"
       - name: Upload Docker image
         uses: cloudops-one/upload-artifact@v4
         with:
@@ -264,7 +242,6 @@ jobs:
           path: docker-image.tar
           retention-days: 1
 
-  # Trivy container scan runs after docker-build completes
   trivy-container-scan:
     needs: [validate-branch, docker-build]
     if: needs.validate-branch.outputs.branch_valid == 'true'
@@ -275,12 +252,9 @@ jobs:
         with:
           name: docker-image
           path: .
-
       - name: Load Docker image
         run: |
           docker load -i docker-image.tar
-          echo "Loaded images:"
-          docker images
       - name: Scan Docker image with Trivy
         uses: cloudops-one/devops-ci/.github/actions/trivy-scan@main
         with:
@@ -300,12 +274,9 @@ jobs:
         with:
           name: docker-image
           path: .
-
       - name: Load Docker image
         run: |
           docker load -i docker-image.tar
-          echo "Loaded images:"
-          docker images
       - name: Login to Docker Registry
         run: |
           echo "${{ secrets.HARBOR_PASSWORD }}" | docker login ${{ secrets.HARBOR_REGISTRY }} --username ${{ secrets.HARBOR_USERNAME }} --password-stdin
@@ -313,41 +284,33 @@ jobs:
         run: |
           LOCAL_IMAGE="portal-irai-yoga-admin:${{ needs.validate-branch.outputs.docker_tag }}"
           REMOTE_IMAGE="${{ secrets.HARBOR_REGISTRY }}/portal-irai-yoga/admin:${{ needs.validate-branch.outputs.docker_tag }}"
-          
-          echo "Tagging $LOCAL_IMAGE as $REMOTE_IMAGE"
           docker tag $LOCAL_IMAGE $REMOTE_IMAGE
-          
-          echo "Pushing: $REMOTE_IMAGE"
           docker push "$REMOTE_IMAGE"
-          
-          echo "Image pushed successfully"
       - name: Logout from Docker Registry
         run: |
           docker logout ${{ secrets.HARBOR_REGISTRY }}
 
-  # ========== KUBERNETES DEPLOYMENT USING CENTRALIZED ACTION ==========
-  k8s-deploy:
-    needs: [validate-branch, docker-push]
+  deploy:
+    needs: docker-push
     if: needs.validate-branch.outputs.branch_valid == 'true'
     runs-on: ubuntu-latest
-    environment: ${{ needs.validate-branch.outputs.environment }}
-    
     steps:
       - name: Checkout code
         uses: cloudops-one/checkout@v4
-        
-      - name: Deploy to Kubernetes using centralized action
-        uses: cloudops-one/devops-ci/.github/actions/k8s-deployment@main
+
+      - name: Set up kubectl
+        uses: cloudops-one/action-doctl@main
         with:
-          kubeconfig: ${{ secrets.KUBECONFIG }}
-          environment: ${{ needs.validate-branch.outputs.environment }}
-          cluster-name: 'k8s'
-          project-name: ${{ needs.validate-branch.outputs.project_name }}
-          component: ${{ needs.validate-branch.outputs.component }}
-          docker-tag: ${{ needs.validate-branch.outputs.docker_tag }}
-          harbor-registry: ${{ secrets.HARBOR_REGISTRY }}
-          harbor-username: ${{ secrets.HARBOR_USERNAME }}
-          harbor-password: ${{ secrets.HARBOR_PASSWORD }}
-          namespace: 'irai-yoga-v1-live'
-          replicas: '1'
-          container-port: '80'
+          token: ${{ secrets.DO_API_TOKEN }}
+
+      - name: Save kubeconfig
+        run: doctl kubernetes cluster kubeconfig save <cluster-name>
+
+      - name: Deploy to Kubernetes
+        run: |
+          IMAGE_TAG="${{ secrets.HARBOR_REGISTRY }}/portal-irai-yoga/admin:${{ needs.validate-branch.outputs.docker_tag }}"
+          NAMESPACE=irai-yoga-v1-live
+          DEPLOYMENT=irai-yoga-v1-admin-live
+          CONTAINER=irai-yoga-v1-admin-live
+          kubectl set image deployment/$DEPLOYMENT $CONTAINER=$IMAGE_TAG -n $NAMESPACE
+          kubectl rollout status deployment/$DEPLOYMENT -n $NAMESPACE
