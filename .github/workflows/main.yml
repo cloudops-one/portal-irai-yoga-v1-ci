@@ -105,6 +105,7 @@ jobs:
             echo "Branch name does not match required pattern"
             exit 1
           fi
+
   # Security scanning jobs - run sequentially
   gitleaks-scan:
     needs: validate-branch
@@ -205,6 +206,7 @@ jobs:
         run: |
           echo "Running compilation step..."
           echo "Compilation completed successfully"
+
   react-build:
     needs: compile
     if: needs.validate-branch.outputs.branch_valid == 'true'
@@ -323,15 +325,29 @@ jobs:
         run: |
           docker logout ${{ secrets.HARBOR_REGISTRY }}
 
-  # Call the centralized Kubernetes deployment action
-  deploy:
-    needs: [docker-push , validate-branch]
+  # ========== KUBERNETES DEPLOYMENT USING CENTRALIZED ACTION ==========
+  k8s-deploy:
+    needs: [validate-branch, docker-push]
     if: needs.validate-branch.outputs.branch_valid == 'true'
     runs-on: ubuntu-latest
+    environment: ${{ needs.validate-branch.outputs.environment }}
+    
     steps:
-      - name: Deploy all apps to Kubernetes
+      - name: Checkout code
+        uses: cloudops-one/checkout@v4
+        
+      - name: Deploy to Kubernetes using centralized action
         uses: cloudops-one/devops-ci/.github/actions/k8s-deployment@main
         with:
-          namespace: irai-yoga-v1-live
           kubeconfig: ${{ secrets.KUBECONFIG }}
-          admin-image: ${{ secrets.HARBOR_REGISTRY }}/portal-irai-yoga/admin:${{ needs.validate-branch.outputs.docker_tag }}
+          environment: ${{ needs.validate-branch.outputs.environment }}
+          cluster-name: 'k8s'
+          project-name: ${{ needs.validate-branch.outputs.project_name }}
+          component: ${{ needs.validate-branch.outputs.component }}
+          docker-tag: ${{ needs.validate-branch.outputs.docker_tag }}
+          harbor-registry: ${{ secrets.HARBOR_REGISTRY }}
+          harbor-username: ${{ secrets.HARBOR_USERNAME }}
+          harbor-password: ${{ secrets.HARBOR_PASSWORD }}
+          namespace: 'irai-yoga-v1-live'
+          replicas: '1'
+          container-port: '80'
