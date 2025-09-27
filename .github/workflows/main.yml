@@ -330,5 +330,4 @@ jobs:
         namespace: ${{ needs.validate-branch.outputs.environment == 'live' && 'irai-yoga-v1-live' || needs.validate-branch.outputs.environment == 'stage' && 'irai-yoga-v1-stage' || 'irai-yoga-v1-preview' }}
         deployment-name: ${{ needs.validate-branch.outputs.environment == 'live' && 'irai-yoga-v1-admin-live' || needs.validate-branch.outputs.environment == 'stage' && 'irai-yoga-v1-admin-stage' || 'irai-yoga-v1-admin-preview' }}
         container-name: ${{ needs.validate-branch.outputs.environment == 'live' && 'irai-yoga-v1-admin-live' || needs.validate-branch.outputs.environment == 'stage' && 'irai-yoga-v1-admin-stage' || 'irai-yoga-v1-admin-preview' }}
-        image: ${{ env.IMAGE_TAG }}
         deployment-file: ${{ needs.validate-branch.outputs.environment == 'live' && 'devops-ci/k8s/live/irai-yoga-v1-admin/deployment.yaml' || needs.validate-branch.outputs.environment == 'stage' && 'devops-ci/k8s/stage/irai-yoga-v1-admin/deployment.yaml' || 'devops-ci/k8s/preview/irai-yoga-v1-admin/deployment.yaml' }}
