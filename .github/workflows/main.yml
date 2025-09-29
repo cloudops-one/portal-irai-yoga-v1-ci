@@ -306,11 +306,13 @@ jobs:
       - name: Logout from Docker Registry
         run: |
           docker logout ${{ secrets.HARBOR_REGISTRY }}
-
   deploy:
-   needs: [docker-push , validate-branch]
+   needs: [docker-push, validate-branch]
    if: needs.validate-branch.outputs.branch_valid == 'true'
    runs-on: ubuntu-latest
+   environment:
+    name: ${{ needs.validate-branch.outputs.environment }}
+    url: https://github.irai.yoga  # optional, shows in UI
    steps:
     - name: Checkout app repo
       uses: cloudops-one/checkout@v4
