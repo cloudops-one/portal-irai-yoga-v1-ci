@@ -194,6 +194,8 @@ jobs:
           node-version: '20'
           skip-husky: true
           generate-lockfile: true
+        env:
+          VITE_API_BASE_URL:  https:// server.preview.v1.irai.yoga/
 
   docker-build:
     needs: [validate-branch, react-build]
