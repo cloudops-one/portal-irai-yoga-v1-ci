@@ -11,8 +11,8 @@ export const useGetAllPractices = (
   searchTerm: string = "",
   practiceCategoryId: string = "",
 ) => {
-  const sortBy = sortModel[0]?.field || "createdAt";
-  const direction = sortModel[0]?.sort?.toUpperCase() || "DESC";
+  const sortBy = sortModel[0]?.field ?? "createdAt";
+  const direction = sortModel[0]?.sort?.toUpperCase() ?? "DESC";
 
   const { data, isPending, refetch } = useApi<AppResponse<PracticeType>>({
     url: API_URLS.PRACTICE,
@@ -32,7 +32,7 @@ export const useGetAllPractices = (
 
   return {
     practices: data?.data || [],
-    totalCount: data?.pageable?.totalElements || 0,
+    totalCount: data?.pageable?.totalElements ?? 0,
     isPending,
     refetch,
   };

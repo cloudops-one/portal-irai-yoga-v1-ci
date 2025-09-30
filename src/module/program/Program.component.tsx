@@ -7,7 +7,6 @@ import {
   CardMedia,
   CardActions,
   Typography,
-  Grid,
   CircularProgress,
   IconButton,
   Avatar,
@@ -34,6 +33,8 @@ import theme from "../../common/App.theme";
 import { useProgramStatus } from "../../common/App.hooks";
 import { useGetSetting } from "../../common/App.service";
 import { SettingItem } from "../../common/App.type";
+import Grid from "@mui/material/Grid2";
+
 interface PaginationState {
   page: number;
   pageSize: number;
@@ -82,13 +83,13 @@ const ProgramComponent: React.FC = () => {
       { programId, status: newStatus },
       {
         onSuccess: (response) => {
-          showSuccess(response.message || "Status updated successfully");
+          showSuccess(response.message ?? "Status updated successfully");
           fetchPrograms();
         },
         onError: (error) => {
           const errorMessage =
-            (error.response?.data as { errorMessage?: string })?.errorMessage ||
-            error.message ||
+            (error.response?.data as { errorMessage?: string })?.errorMessage ??
+            error.message ??
             "Failed to update status";
           showError(errorMessage);
         },
@@ -100,13 +101,13 @@ const ProgramComponent: React.FC = () => {
       { programId, flag: newFlag },
       {
         onSuccess: (response) => {
-          showSuccess(response.message || "Flag updated successfully");
+          showSuccess(response.message ?? "Flag updated successfully");
           fetchPrograms();
         },
         onError: (error) => {
           const errorMessage =
-            (error.response?.data as { errorMessage?: string })?.errorMessage ||
-            error.message ||
+            (error.response?.data as { errorMessage?: string })?.errorMessage ??
+            error.message ??
             "Failed to update status";
           showError(errorMessage);
         },
@@ -146,14 +147,14 @@ const ProgramComponent: React.FC = () => {
         {
           onSuccess: (response: { message?: string }) => {
             fetchPrograms();
-            showSuccess(response.message || "Program deleted successfully");
+            showSuccess(response.message ?? "Program deleted successfully");
             setDeleteConfirmation({ open: false, programId: null });
           },
           onError: (error) => {
             const errorMessage =
               (error.response?.data as { errorMessage?: string })
-                ?.errorMessage ||
-              error.message ||
+                ?.errorMessage ??
+              error.message ??
               "Failed to delete program";
             showError(errorMessage);
             setDeleteConfirmation({ open: false, programId: null });
@@ -265,11 +266,7 @@ const ProgramComponent: React.FC = () => {
             <Grid container spacing={3}>
               {programs.map((program) => (
                 <Grid
-                  item
-                  xs={12}
-                  sm={6}
-                  md={4}
-                  lg={3.5}
+                  size={{ xs: 12, sm: 6, md: 4, lg: 3.5 }}
                   key={program.programId}
                 >
                   <Card
@@ -305,14 +302,14 @@ const ProgramComponent: React.FC = () => {
                           },
                         }}
                         image={
-                          program.programBannerStorageUrl ||
-                          program.programBannerExternalUrl ||
+                          program.programBannerStorageUrl ??
+                          program.programBannerExternalUrl ??
                           "/placeholder-banner.jpg"
                         }
                         alt={program.programName}
                       />
                       <Chip
-                        label={program.flag || "No Flag"}
+                        label={program.flag ?? "No Flag"}
                         size="small"
                         sx={{
                           position: "absolute",
@@ -379,7 +376,7 @@ const ProgramComponent: React.FC = () => {
                           },
                         }}
                         dangerouslySetInnerHTML={{
-                          __html: program.programDescription || "",
+                          __html: program.programDescription ?? "",
                         }}
                       />
                       <Box
@@ -434,10 +431,13 @@ const ProgramComponent: React.FC = () => {
 
                       <FormControl
                         size="small"
-                        sx={{ minWidth: 90, maxWidth: "auto", mr: 0.5 }}
+                        sx={{ minWidth: 90, maxWidth: 100, mr: 0.5 }}
                       >
                         <Select
-                          value={program.flag}
+                          value={
+                            flags.find((flag) => flag.value === program.flag)
+                              ?.key ?? ""
+                          }
                           onChange={(e) =>
                             handleFlagChange(e.target.value, program.programId)
                           }
@@ -484,7 +484,7 @@ const ProgramComponent: React.FC = () => {
           open={isModalOpen}
           onClose={() => setIsModalOpen(false)}
           onSave={handleSaveProgram}
-          program={selectedProgram || undefined}
+          program={selectedProgram ?? undefined}
         />
 
         <ConfirmDelete

@@ -52,7 +52,7 @@ import SnackBar from "../../component/SnackBar";
 import OrganizationDropdown from "../organization/OrganizationDropdown.component";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
-import { msToTimeString, hmsToMs, msToHms } from "../../component/Duration";
+import { msToTimeString, DurationInput } from "../../component/Duration";
 import Autocomplete from "@mui/material/Autocomplete";
 import { TiptapEditor } from "../../component/TipTapTextEditor";
 import { CustomModal } from "../../component/Modal";
@@ -94,7 +94,7 @@ const PoemComponent = () => {
     [],
   );
   const [poemInputType, setPoemInputType] = useState<"file" | "url">("file");
-  const [poemIconInputType, setIconInputtype] = useState<"file" | "url">(
+  const [poemIconInputType, setPoemIconInputType] = useState<"file" | "url">(
     "file",
   );
   const [poemBannerInputType, setPoemBannerInputType] = useState<
@@ -170,19 +170,19 @@ const PoemComponent = () => {
   };
 
   // Function to open the form modal for adding a new poem
-  const handleAdd = async (payload: Record<string, unknown>) => {
+  const handleAdd = (payload: Record<string, unknown>) => {
     try {
-      await addPoem(payload, {
+      addPoem(payload, {
         onSuccess: (response: { message?: string }) => {
           refetch();
           setOpen(false);
           reset(poemFormInitialState);
-          showSuccess(response.message || "Poem added successfully");
+          showSuccess(response.message ?? "Poem added successfully");
         },
         onError: (error) => {
           const errorMessage =
-            (error.response?.data as { errorMessage?: string })?.errorMessage ||
-            error.message ||
+            (error.response?.data as { errorMessage?: string })?.errorMessage ??
+            error.message ??
             "Failed to add Poem";
           console.error("Failed to add Poem:", errorMessage);
 
@@ -211,8 +211,8 @@ const PoemComponent = () => {
         },
         onError(error) {
           const errorMessage =
-            (error.response?.data as { errorMessage?: string })?.errorMessage ||
-            error.message ||
+            (error.response?.data as { errorMessage?: string })?.errorMessage ??
+            error.message ??
             "failed to get Poem Details";
           console.error("failed to get Poem Details");
           showError(errorMessage);
@@ -230,13 +230,13 @@ const PoemComponent = () => {
             refetch();
             setOpen(false);
             reset(poemFormInitialState);
-            showSuccess(response.message || "Poem Edit successfully");
+            showSuccess(response.message ?? "Poem Edit successfully");
           },
           onError: (error) => {
             const errorMessage =
               (error.response?.data as { errorMessage?: string })
-                ?.errorMessage ||
-              error.message ||
+                ?.errorMessage ??
+              error.message ??
               "Failed to Edit Poem";
             console.error("Failed to Edit Poem:", errorMessage);
             showError(errorMessage);
@@ -256,19 +256,19 @@ const PoemComponent = () => {
       poemText: data.poemText,
       poemDescription: data.poemDescription,
       poemDuration: data.poemDuration,
-      poemTags: data.poemTags || null,
-      orgId: data.orgId || null,
+      poemTags: data.poemTags ?? null,
+      orgId: data.orgId ?? null,
       poemStorageId: poemInputType === "file" ? data.poemStorageId : undefined,
       poemExternalUrl:
         poemInputType === "url" ? data.poemExternalUrl : undefined,
       poemIconStorageId:
         poemIconInputType === "file"
-          ? data.poemIconStorageId || undefined
+          ? (data.poemIconStorageId ?? undefined)
           : undefined,
 
       poemIconExternalUrl:
         poemIconInputType === "url"
-          ? data.poemIconExternalUrl || undefined
+          ? (data.poemIconExternalUrl ?? undefined)
           : undefined,
 
       poemBannerStorageId:
@@ -288,16 +288,16 @@ const PoemComponent = () => {
       deletePoem(
         { poemId: deleteConfirmation.poemId },
         {
-          onSuccess: async (response: { message?: string }) => {
-            await refetch();
-            showSuccess(response.message || "Poem deleted successfully");
+          onSuccess: (response: { message?: string }) => {
+            refetch();
+            showSuccess(response.message ?? "Poem deleted successfully");
             setDeleteConfirmation({ open: false, poemId: null }); // Close modal after success
           },
           onError: (error) => {
             const errorMessage =
               (error.response?.data as { errorMessage?: string })
-                ?.errorMessage ||
-              error.message ||
+                ?.errorMessage ??
+              error.message ??
               "Failed to delete status";
             console.error("Failed to delete status:", errorMessage);
             showError(errorMessage);
@@ -365,7 +365,7 @@ const PoemComponent = () => {
       minWidth: 40,
       renderCell: (params) => {
         const iconUrl =
-          params.row.poemIconStorageUrl || params.row.poemIconExternalUrl || "";
+          params.row.poemIconStorageUrl ?? params.row.poemIconExternalUrl ?? "";
         return (
           <Avatar src={iconUrl} sx={{ marginTop: 1, width: 40, height: 40 }} />
         );
@@ -406,15 +406,15 @@ const PoemComponent = () => {
                       ),
                     );
                     showSuccess(
-                      response.message || "Status updated successfully",
+                      response.message ?? "Status updated successfully",
                     );
                     refetch();
                   },
                   onError: (error) => {
                     const errorMessage =
                       (error.response?.data as { errorMessage?: string })
-                        ?.errorMessage ||
-                      error.message ||
+                        ?.errorMessage ??
+                      error.message ??
                       "Failed to update status";
                     console.error("Failed to update status:", errorMessage);
                     showError(errorMessage);
@@ -663,7 +663,7 @@ const PoemComponent = () => {
                       value={poemIconInputType}
                       onChange={(e) => {
                         const value = e.target.value as "file" | "url";
-                        setIconInputtype(value);
+                        setPoemIconInputType(value);
                         if (value === "url") {
                           setValue("poemIconExternalUrl", "");
                           setValue("poemIconStorageId", ""); // Clear URL field
@@ -894,20 +894,17 @@ const PoemComponent = () => {
                       control={control}
                       defaultValue={0}
                       render={({ field }) => (
-                        <TextField
-                          {...field}
-                          label="Poem Duration (hh:mm:ss)"
-                          value={msToHms(field.value)} // show as hh:mm:ss
-                          onChange={(e) => {
-                            const ms = hmsToMs(e.target.value);
-                            field.onChange(ms);
-                          }}
-                          fullWidth
-                          size="small"
-                          margin="normal"
-                          placeholder="hh:mm:ss"
-                          inputProps={{ pattern: "[0-9]{2}:[0-9]{2}:[0-9]{2}" }}
-                        />
+                        <Box>
+                          <DurationInput
+                            value={field.value}
+                            onChange={field.onChange}
+                          />
+                          {errors.poemDuration && (
+                            <Typography color="error" variant="body2">
+                              {errors.poemDuration.message}
+                            </Typography>
+                          )}
+                        </Box>
                       )}
                     />
                   </Box>

@@ -30,6 +30,7 @@ import { CustomModal } from "../../component/Modal";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as Yup from "yup";
 import { useGetTag } from "../../common/App.service";
+import theme from "../../common/App.theme";
 interface Props {
   open: boolean;
   onClose: () => void;
@@ -73,7 +74,6 @@ const ShortFormDialog: React.FC<Props> = ({
   );
   const [videoInputType, setVideoInputType] = useState<"file" | "url">("file");
   const [tag, setTag] = useState<string[]>([]);
-  // const { settings: tag } = useShortTags();
   const { getTags } = useGetTag();
 
   const {
@@ -107,12 +107,11 @@ const ShortFormDialog: React.FC<Props> = ({
   const { addShorts, isAddShortsPending } = useAddShorts();
   const { editShorts, isEditShortsPending } = useEditShorts();
 
-  // Reset form on open/close or when editing different short
   useEffect(() => {
     if (editMode && short) {
       reset({
         ...short,
-        shortsStorageUrl: short.shortsStorageUrl, // Make sure this is included
+        shortsStorageUrl: short.shortsStorageUrl,
         shortsBannerStorageUrl: short.shortsBannerStorageUrl,
       });
       setBannerInputType(short.shortsBannerStorageId ? "file" : "url");
@@ -127,17 +126,17 @@ const ShortFormDialog: React.FC<Props> = ({
   // Use async (payload: Record<string, unknown>)
   const handleAdd = async (payload: Record<string, unknown>) => {
     try {
-      await addShorts(payload, {
+      addShorts(payload, {
         onSuccess: (response: { message?: string }) => {
           reset(ShortsFormInitialState);
           refetch();
           onClose();
-          showSuccess(response.message || "Shorts added successfully");
+          showSuccess(response.message ?? "Shorts added successfully");
         },
         onError: (error) => {
           const errorMessage =
-            (error.response?.data as { errorMessage?: string })?.errorMessage ||
-            error.message ||
+            (error.response?.data as { errorMessage?: string })?.errorMessage ??
+            error.message ??
             "Failed to add shorts";
           console.error("Failed to add shorts:", errorMessage);
           showError(errorMessage);
@@ -161,13 +160,13 @@ const ShortFormDialog: React.FC<Props> = ({
             reset(ShortsFormInitialState);
             refetch();
             onClose();
-            showSuccess(response.message || "Shorts updated successfully");
+            showSuccess(response.message ?? "Shorts updated successfully");
           },
           onError: (error) => {
             const errorMessage =
               (error.response?.data as { errorMessage?: string })
-                ?.errorMessage ||
-              error.message ||
+                ?.errorMessage ??
+              error.message ??
               "Failed to update shorts";
             console.error("Failed to update shorts:", errorMessage);
             showError(errorMessage);
@@ -188,8 +187,8 @@ const ShortFormDialog: React.FC<Props> = ({
     const payload: Record<string, unknown> = {
       shortsName: data.shortsName,
       shortsDescription: data.shortsDescription,
-      tags: data.tags || null,
-      orgId: data.orgId || null,
+      tags: data.tags ?? null,
+      orgId: data.orgId ?? null,
       duration: data.duration,
       shortsBannerStorageId:
         bannerInputType === "file" ? data.shortsBannerStorageId : undefined,
@@ -233,7 +232,7 @@ const ShortFormDialog: React.FC<Props> = ({
               open={showDiscardConfirm}
               handleClose={() => setShowDiscardConfirm(false)}
               headingText="Unsaved Changes"
-              width="400px"
+              width="500px"
             >
               <Box className="p-4">
                 <Typography>
@@ -259,6 +258,7 @@ const ShortFormDialog: React.FC<Props> = ({
                   <Button
                     variant="contained"
                     color="error"
+                    sx={{ backgroundColor: theme.palette.error.main }}
                     onClick={() => {
                       onClose();
                       setShowDiscardConfirm(false);
@@ -360,7 +360,12 @@ const ShortFormDialog: React.FC<Props> = ({
                               <Chip
                                 label={option}
                                 {...getTagProps({ index })}
-                                sx={{ mr: 0.5, color: "black" }}
+                                sx={{
+                                  mr: 0.5,
+                                  backgroundColor:
+                                    theme.palette.badge?.activeUserText,
+                                  color: theme.palette.primary.contrastText,
+                                }}
                                 key={`custom-key-${index}`}
                               />
                             ))
@@ -431,8 +436,8 @@ const ShortFormDialog: React.FC<Props> = ({
                             }}
                             moduleType="SHORTS"
                             initialPreviewUrl={
-                              watch("shortsBannerStorageUrl") ||
-                              watch("shortsBannerExternalUrl") ||
+                              watch("shortsBannerStorageUrl") ??
+                              watch("shortsBannerExternalUrl") ??
                               ""
                             }
                             fallbackImageUrl={FALLBACK_SHORTS_THUMBNAIL}
@@ -481,8 +486,8 @@ const ShortFormDialog: React.FC<Props> = ({
                         setValue("shortsExternalUrl", "");
                         setValue("shortsStorageId", "");
                       } else {
-                        setValue("shortsExternalUrl", "");
                         setValue("shortsStorageId", "");
+                        setValue("shortsExternalUrl", "");
                       }
                     }}
                   >
@@ -571,7 +576,12 @@ const ShortFormDialog: React.FC<Props> = ({
                 </Box>
 
                 <Box sx={{ display: "flex", justifyContent: "center", mt: 2 }}>
-                  <Button type="submit" variant="contained" color="success">
+                  <Button
+                    type="submit"
+                    variant="contained"
+                    color="success"
+                    disabled={loading}
+                  >
                     {editMode ? "Update" : "Create Shorts"}
                   </Button>
                 </Box>

@@ -11,6 +11,7 @@ import {
   ShortsResponse,
   DashboardStats,
   DashboardErrors,
+  NewsResponse,
 } from "./Dashboard.type";
 
 export const useGetDashboard = () => {
@@ -24,6 +25,7 @@ export const useGetDashboard = () => {
     totalPoems: 0,
     totalShorts: 0,
     topEvents: [],
+    topNews: [],
   });
   const [isLoading, setIsLoading] = useState(true);
   const [errors, setErrors] = useState<DashboardErrors>({});
@@ -91,6 +93,14 @@ export const useGetDashboard = () => {
     url: API_URLS.SHORTS_DASHBOARD,
   });
 
+  const {
+    data: newsData,
+    isPending: isNewsPending,
+    error: newsError,
+  } = useApi<NewsResponse>({
+    url: API_URLS.NEWS_DASHBOARD,
+  });
+
   useEffect(() => {
     // Update errors whenever they occur
     const newErrors: DashboardErrors = {};
@@ -111,6 +121,12 @@ export const useGetDashboard = () => {
       newErrors.events = {
         message: eventsError.message || "Failed to load events",
         status: eventsError.status,
+      };
+    }
+    if (newsError) {
+      newErrors.news = {
+        message: newsError.message || "Failed to load news",
+        status: newsError.status,
       };
     }
     if (poemsError) {
@@ -157,19 +173,21 @@ export const useGetDashboard = () => {
       !isPoemsPending &&
       !isPracticesPending &&
       !isProgramsPending &&
-      !isShortsPending
+      !isShortsPending &&
+      !isNewsPending
     ) {
       setIsLoading(false);
       setStats({
-        totalOrganizations: orgData?.data?.total || 0,
-        totalUsers: userData?.data?.totalUser || 0,
-        totalActiveUsers: userData?.data?.totalActiveUsers || 0,
-        totalMobileUsers: userData?.data?.totalMobileUsers || 0,
-        totalPractices: practicesData?.data?.total || 0,
-        totalPrograms: programsData?.data?.total || 0,
-        totalPoems: poemsData?.data?.total || 0,
-        totalShorts: shortsData?.data?.total || 0,
-        topEvents: eventsData?.data || [],
+        totalOrganizations: orgData?.data?.total ?? 0,
+        totalUsers: userData?.data?.totalUser ?? 0,
+        totalActiveUsers: userData?.data?.totalActiveUsers ?? 0,
+        totalMobileUsers: userData?.data?.totalMobileUsers ?? 0,
+        totalPractices: practicesData?.data?.total ?? 0,
+        totalPrograms: programsData?.data?.total ?? 0,
+        totalPoems: poemsData?.data?.total ?? 0,
+        totalShorts: shortsData?.data?.total ?? 0,
+        topEvents: eventsData?.data ?? [],
+        topNews: newsData?.data ?? [],
       });
     }
   }, [
@@ -180,6 +198,7 @@ export const useGetDashboard = () => {
     isPracticesPending,
     isProgramsPending,
     isShortsPending,
+    isNewsPending,
     orgData,
     userData,
     eventsData,

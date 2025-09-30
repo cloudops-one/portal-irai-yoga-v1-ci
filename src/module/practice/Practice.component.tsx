@@ -14,7 +14,6 @@ import {
   FormControl,
   Chip,
   Stack,
-  Grid,
 } from "@mui/material";
 import Rating from "@mui/material/Rating";
 import ConfirmDelete from "../../component/ConfirmDelete.dialog";
@@ -41,6 +40,7 @@ import {
   usePracticeStatus,
 } from "../../common/App.hooks";
 import { CustomModal } from "../../component/Modal";
+import Grid from "@mui/material/Grid2";
 
 const StyledImageContainer = styled(Box)(({ theme }) => ({
   borderRadius: theme.shape.borderRadius,
@@ -558,7 +558,7 @@ const Practice = () => {
 
                 {/* Details Grid */}
                 <Grid container spacing={3}>
-                  <Grid item xs={12} md={6}>
+                  <Grid size={{ xs: 12, md: 6 }}>
                     <Typography variant="subtitle1" color="text.secondary">
                       Created By
                     </Typography>
@@ -567,7 +567,7 @@ const Practice = () => {
                     </Typography>
                   </Grid>
 
-                  <Grid item xs={12} md={6}>
+                  <Grid size={{ xs: 12, md: 6 }}>
                     <Typography variant="subtitle1" color="text.secondary">
                       Updated By
                     </Typography>
@@ -576,7 +576,7 @@ const Practice = () => {
                     </Typography>
                   </Grid>
 
-                  <Grid item xs={12} md={6}>
+                  <Grid size={{ xs: 12, md: 6 }}>
                     <Typography variant="subtitle1" color="text.secondary">
                       Created At
                     </Typography>
@@ -585,7 +585,7 @@ const Practice = () => {
                     </Typography>
                   </Grid>
 
-                  <Grid item xs={12} md={6}>
+                  <Grid size={{ xs: 12, md: 6 }}>
                     <Typography variant="subtitle1" color="text.secondary">
                       Last Updated
                     </Typography>

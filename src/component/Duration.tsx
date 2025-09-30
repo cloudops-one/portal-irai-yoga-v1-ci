@@ -68,14 +68,16 @@ export const DurationInput: React.FC<DurationPickerProps> = ({
   };
 
   return (
-    <Box display="flex" gap={1}>
+    <Box display="flex " gap={2} marginBottom={3} marginTop={1}>
       <TextField
         label="Minutes"
         type="number"
         size="small"
         value={minutes}
         onChange={(e) => handleChange(hours, Number(e.target.value), seconds)}
-        inputProps={{ min: 0, max: 59 }}
+        slotProps={{
+          htmlInput: { min: 0, max: 59 },
+        }}
       />
       <TextField
         label="Seconds"
@@ -84,7 +86,9 @@ export const DurationInput: React.FC<DurationPickerProps> = ({
         value={seconds}
         error={error}
         onChange={(e) => handleChange(hours, minutes, Number(e.target.value))}
-        inputProps={{ min: 0, max: 59 }}
+        slotProps={{
+          htmlInput: { min: 0, max: 59 },
+        }}
       />
     </Box>
   );

@@ -10,7 +10,7 @@ const createFileOrUrlValidation = (fileField: string, urlField: string) => {
         "file-or-url",
         "Either file upload or URL is required",
         function (value) {
-          return !!(value || this.parent[urlField]);
+          return !!(value ?? this.parent[urlField]);
         },
       ),
     [urlField]: yup
@@ -20,7 +20,7 @@ const createFileOrUrlValidation = (fileField: string, urlField: string) => {
         "file-or-url",
         "Either file upload or URL is required",
         function (value) {
-          return !!(value || this.parent[fileField]);
+          return !!(value ?? this.parent[fileField]);
         },
       ),
   };

@@ -8,12 +8,12 @@ import { GiBattleGear } from "react-icons/gi";
 import { FaFilm } from "react-icons/fa";
 import { MdOutlineEventAvailable } from "react-icons/md";
 import EventsCard from "../../component/EventsCard";
-import { Box, Typography } from "@mui/material";
-import theme from "../../common/App.theme";
+import { Typography } from "@mui/material";
 import { useEffect, useState } from "react";
 import SnackBar from "../../component/SnackBar";
 import { SNACKBAR_SEVERITY, SnackbarSeverity } from "../../common/App.const";
-
+import NewsCard from "../../component/NewsCard";
+import ScrollContainer from "../../component/ScrollContainer";
 const Dashboard = () => {
   const { stats, isLoading, errors } = useGetDashboard();
   const [snackbar, setSnackbar] = useState<{
@@ -109,34 +109,22 @@ const Dashboard = () => {
               <StatsCard title={text} value={count} key={text} icon={icon} />
             ))}
           </div>
-          <div className="flex flex-col md:flex-row w-full mt-5 h-108 rounded-2xl">
-            <div className="sm:w-full md:w-2/5  bg-white  flex flex-col ">
-              <Typography variant="h6" className="font-bold px-2">
+          <div className="flex flex-col md:flex-row w-full gap-2 mt-5 h-108 ">
+            <div className="sm:w-full md:w-2/5  bg-white  flex flex-col  mx-1 rounded-2xl">
+              <Typography variant="h6" className="font-bold px-4">
                 Upcoming Events
               </Typography>
-              <Box
-                className="flex-1 overflow-y-auto  h-screen"
-                sx={{
-                  flexGrow: 1,
-                  overflowY: "auto",
-                  "&::-webkit-scrollbar": {
-                    width: "4px",
-                  },
-                  "&:hover::-webkit-scrollbar-track": {
-                    background: "#fff",
-                  },
-                  "&:hover::-webkit-scrollbar-thumb": {
-                    background: "#61B15A",
-                    borderRadius: "10px",
-                  },
-                  "&:hover::-webkit-scrollbar-thumb:hover": {
-                    background:
-                      theme?.palette?.sideNavigation?.selectedNavigationItemBg,
-                  },
-                }}
-              >
+              <ScrollContainer>
                 <EventsCard events={stats.topEvents} />
-              </Box>
+              </ScrollContainer>
+            </div>
+            <div className="sm:w-full md:w-3/5 bg-white flex flex-col  mx-1 rounded-2xl">
+              <Typography variant="h6" className="font-bold px-4">
+                Latest News
+              </Typography>
+              <ScrollContainer>
+                <NewsCard news={stats.topNews} />
+              </ScrollContainer>
             </div>
           </div>
         </div>

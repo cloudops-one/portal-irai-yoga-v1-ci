@@ -7,7 +7,6 @@ import {
   CardMedia,
   CardActions,
   Typography,
-  Grid,
   IconButton,
   Select,
   MenuItem,
@@ -15,7 +14,7 @@ import {
   FormControl,
   CircularProgress,
 } from "@mui/material";
-import { Edit, Delete, Add } from "@mui/icons-material";
+import { Edit, Delete, Add, Visibility } from "@mui/icons-material";
 import NewsModal from "./NewsModal";
 import {
   useGetNews,
@@ -31,6 +30,9 @@ import FullHeightDataGridContainer from "../../component/DataGridContainerHeight
 import theme from "../../common/App.theme";
 import { formatDistanceToNow } from "date-fns";
 import { useNewsStatus } from "../../common/App.hooks";
+import ViewNewsModal from "./ViewNewsModal";
+import Grid from "@mui/material/Grid2";
+
 interface PaginationState {
   page: number;
   pageSize: number;
@@ -51,6 +53,13 @@ const NewsComponent = () => {
     open: boolean;
     newsId: string | null;
   }>({ open: false, newsId: null });
+  const [viewModalOpen, setViewModalOpen] = useState(false);
+  const [viewingNews, setViewingNews] = useState<NewsType | null>(null);
+
+  const handleViewNews = (news: NewsType) => {
+    setViewingNews(news);
+    setViewModalOpen(true);
+  };
 
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
@@ -98,14 +107,14 @@ const NewsComponent = () => {
         {
           onSuccess: (response: { message?: string }) => {
             fetchNews();
-            showSuccess(response.message || "News deleted successfully");
+            showSuccess(response.message ?? "News deleted successfully");
             setDeleteConfirmation({ open: false, newsId: null });
           },
           onError: (error) => {
             const errorMessage =
               (error.response?.data as { errorMessage?: string })
-                ?.errorMessage ||
-              error.message ||
+                ?.errorMessage ??
+              error.message ??
               "Failed to delete news";
             showError(errorMessage);
             setDeleteConfirmation({ open: false, newsId: null });
@@ -141,13 +150,13 @@ const NewsComponent = () => {
       { newsId, status: newStatus },
       {
         onSuccess: (response: { message?: string }) => {
-          showSuccess(response.message || "Status updated successfully");
+          showSuccess(response.message ?? "Status updated successfully");
           fetchNews();
         },
         onError: (error) => {
           const errorMessage =
-            (error.response?.data as { errorMessage?: string })?.errorMessage ||
-            error.message ||
+            (error.response?.data as { errorMessage?: string })?.errorMessage ??
+            error.message ??
             "Failed to add Poem";
           showError(errorMessage);
         },
@@ -162,6 +171,257 @@ const NewsComponent = () => {
   useEffect(() => {
     fetchNews();
   }, [pagination.page, pagination.pageSize]);
+
+  let content;
+
+  if (isGetAllNewsPending) {
+    content = (
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          height: "100%",
+        }}
+      >
+        <CircularProgress />
+      </Box>
+    );
+  } else if (newsItems.length === 0) {
+    content = (
+      <Box
+        sx={{
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+          alignItems: "center",
+          height: "100%",
+          textAlign: "center",
+          p: 4,
+        }}
+      >
+        <Typography variant="h6" gutterBottom>
+          No news found
+        </Typography>
+        <Typography variant="body2" color="textSecondary" sx={{ mb: 3 }}>
+          Create your first news article to get started
+        </Typography>
+        <Button
+          variant="outlined"
+          startIcon={<Add />}
+          onClick={() => handleOpenModal()}
+        >
+          Create News
+        </Button>
+      </Box>
+    );
+  } else {
+    content = (
+      <Grid container spacing={3}>
+        {newsItems.map((news) => (
+          <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3.5 }} key={news.newsId}>
+            <Card
+              sx={{
+                height: "100%",
+                display: "flex",
+                flexDirection: "column",
+                transition: "transform 0.2s",
+                "&:hover": {
+                  transform: "scale(1.03)",
+                  boxShadow: 3,
+                },
+                borderRadius: 2,
+                overflow: "hidden",
+                marginTop: 2,
+              }}
+            >
+              {/* Image with status badge */}
+              <Box sx={{ position: "relative" }}>
+                {news.newsBannerStorageUrl || news.newsBannerExternalUrl ? (
+                  <CardMedia
+                    component="img"
+                    sx={{
+                      height: 160,
+                      width: "100%",
+                      objectFit: "cover",
+                    }}
+                    image={
+                      news.newsBannerStorageUrl ||
+                      news.newsBannerExternalUrl ||
+                      ""
+                    }
+                    alt={news.newsName}
+                  />
+                ) : (
+                  <Box
+                    sx={{
+                      height: 160,
+                      width: "100%",
+                      bgcolor: "grey.200",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <Typography variant="body2" color="textSecondary">
+                      No Banner
+                    </Typography>
+                  </Box>
+                )}
+                <Chip
+                  label={news?.newsStatus}
+                  size="small"
+                  sx={{
+                    position: "absolute",
+                    top: 8,
+                    right: 8,
+                    backgroundColor:
+                      news.newsStatus === "ACTIVE"
+                        ? theme.palette?.badge?.success
+                        : theme.palette?.badge?.error,
+                    color: "white",
+                    fontWeight: "bold",
+                    boxShadow: 1,
+                  }}
+                />
+              </Box>
+
+              <CardContent sx={{ flexGrow: 1, p: 2 }}>
+                <Typography
+                  gutterBottom
+                  variant="h6"
+                  component="div"
+                  sx={{
+                    fontWeight: "bold",
+                    fontSize: "1rem",
+                    lineHeight: 1.3,
+                    mb: 1,
+                    display: "-webkit-box",
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: "vertical",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    minHeight: "2em",
+                  }}
+                >
+                  {news?.newsName}
+                </Typography>
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  sx={{ display: "block", mb: 1, textAlign: "right" }}
+                >
+                  Created{" "}
+                  {formatDistanceToNow(new Date(news?.createdAt), {
+                    addSuffix: true,
+                  })}
+                </Typography>
+
+                {news?.tags && news.tags.length > 0 && (
+                  <Box
+                    sx={{
+                      mt: 1.5,
+                      display: "flex",
+                      flexWrap: "wrap",
+                      gap: 0.5,
+                    }}
+                  >
+                    {news.tags.map((tag, index) => (
+                      <Chip
+                        key={index}
+                        label={tag}
+                        size="small"
+                        variant="outlined"
+                        sx={{
+                          fontSize: "0.7rem",
+                          color: "background.paper",
+                          borderColor: "background.paper",
+                          backgroundColor: theme.palette.badge?.activeUserText,
+                        }}
+                      />
+                    ))}
+                  </Box>
+                )}
+              </CardContent>
+
+              <CardActions
+                sx={{
+                  justifyContent: "space-between",
+                  padding: "8px 16px",
+                  borderTop: "1px solid",
+                  borderColor: "divider",
+                  bgcolor: "background.paper",
+                }}
+              >
+                <Box>
+                  <IconButton
+                    onClick={() => handleViewNews(news)}
+                    size="small"
+                    sx={{
+                      color: "text.secondary",
+                      "&:hover": {
+                        backgroundColor: "info.main",
+                        color: "info.contrastText",
+                      },
+                    }}
+                  >
+                    <Visibility fontSize="small" />
+                  </IconButton>
+                  <IconButton
+                    onClick={() => handleOpenModal(news)}
+                    size="small"
+                    sx={{
+                      color: "text.secondary",
+                      "&:hover": {
+                        backgroundColor: "primary.main",
+                        color: "primary.contrastText",
+                      },
+                    }}
+                  >
+                    <Edit fontSize="small" />
+                  </IconButton>
+                  <IconButton
+                    onClick={() => handleDeleteNews(news.newsId)}
+                    size="small"
+                    sx={{
+                      color: "text.secondary",
+                      "&:hover": {
+                        backgroundColor: "error.main",
+                        color: "error.contrastText",
+                      },
+                    }}
+                  >
+                    <Delete fontSize="small" />
+                  </IconButton>
+                </Box>
+                <FormControl size="small" sx={{ minWidth: 120 }}>
+                  <Select
+                    value={news.newsStatus}
+                    onChange={(e) =>
+                      handleStatusChange(e.target.value, news.newsId)
+                    }
+                    sx={{
+                      height: 36,
+                      "& .MuiSelect-select": {
+                        py: 0.5,
+                        fontSize: "0.875rem",
+                      },
+                    }}
+                  >
+                    {newsStatus.map((status) => (
+                      <MenuItem key={status.key} value={status.key}>
+                        {status.value}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </CardActions>
+            </Card>
+          </Grid>
+        ))}
+      </Grid>
+    );
+  }
 
   return (
     <FullHeightDataGridContainer>
@@ -209,235 +469,7 @@ const NewsComponent = () => {
             pb: 2,
           }}
         >
-          {isGetAllNewsPending ? (
-            <Box
-              sx={{
-                display: "flex",
-                justifyContent: "center",
-                alignItems: "center",
-                height: "100%",
-              }}
-            >
-              <CircularProgress />
-            </Box>
-          ) : newsItems.length === 0 ? (
-            <Box
-              sx={{
-                display: "flex",
-                flexDirection: "column",
-                justifyContent: "center",
-                alignItems: "center",
-                height: "100%",
-                textAlign: "center",
-                p: 4,
-              }}
-            >
-              <Typography variant="h6" gutterBottom>
-                No news found
-              </Typography>
-              <Typography variant="body2" color="textSecondary" sx={{ mb: 3 }}>
-                Create your first news article to get started
-              </Typography>
-              <Button
-                variant="outlined"
-                startIcon={<Add />}
-                onClick={() => handleOpenModal()}
-              >
-                Create News
-              </Button>
-            </Box>
-          ) : (
-            <Grid container spacing={3}>
-              {newsItems.map((news) => (
-                <Grid item xs={12} sm={6} md={4} lg={3.5} key={news.newsId}>
-                  <Card
-                    sx={{
-                      height: "100%",
-                      display: "flex",
-                      flexDirection: "column",
-                      transition: "transform 0.2s",
-                      "&:hover": {
-                        transform: "scale(1.03)",
-                        boxShadow: 3,
-                      },
-                      borderRadius: 2,
-                      overflow: "hidden",
-                    }}
-                  >
-                    {/* Image with status badge */}
-                    <Box sx={{ position: "relative" }}>
-                      {news.newsBannerStorageUrl ||
-                      news.newsBannerExternalUrl ? (
-                        <CardMedia
-                          component="img"
-                          sx={{
-                            height: 160,
-                            width: "100%",
-                            objectFit: "cover",
-                          }}
-                          image={
-                            news.newsBannerStorageUrl ||
-                            news.newsBannerExternalUrl ||
-                            ""
-                          }
-                          alt={news.newsName}
-                        />
-                      ) : (
-                        <Box
-                          sx={{
-                            height: 160,
-                            width: "100%",
-                            bgcolor: "grey.200",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                          }}
-                        >
-                          <Typography variant="body2" color="textSecondary">
-                            No Banner
-                          </Typography>
-                        </Box>
-                      )}
-                      <Chip
-                        label={news?.newsStatus}
-                        size="small"
-                        sx={{
-                          position: "absolute",
-                          top: 8,
-                          right: 8,
-                          backgroundColor:
-                            news.newsStatus === "ACTIVE"
-                              ? theme.palette?.badge?.success
-                              : theme.palette?.badge?.error,
-                          color: "white",
-                          fontWeight: "bold",
-                          boxShadow: 1,
-                        }}
-                      />
-                    </Box>
-
-                    <CardContent sx={{ flexGrow: 1, p: 2 }}>
-                      <Typography
-                        gutterBottom
-                        variant="h6"
-                        component="div"
-                        sx={{
-                          fontWeight: "bold",
-                          fontSize: "1rem",
-                          lineHeight: 1.3,
-                          mb: 1,
-                          display: "-webkit-box",
-                          WebkitLineClamp: 2,
-                          WebkitBoxOrient: "vertical",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          minHeight: "3em", // Ensure consistent height for 2 lines
-                        }}
-                      >
-                        {news?.newsName}
-                      </Typography>
-                      <Typography
-                        variant="caption"
-                        color="text.secondary"
-                        sx={{ display: "block", mb: 1, textAlign: "right" }}
-                      >
-                        Created{" "}
-                        {formatDistanceToNow(new Date(news?.createdAt), {
-                          addSuffix: true,
-                        })}
-                      </Typography>
-
-                      {news?.tags && news.tags.length > 0 && (
-                        <Box
-                          sx={{
-                            mt: 1.5,
-                            display: "flex",
-                            flexWrap: "wrap",
-                            gap: 0.5,
-                          }}
-                        >
-                          {news.tags.map((tag, index) => (
-                            <Chip
-                              key={index}
-                              label={tag}
-                              size="small"
-                              variant="outlined"
-                              sx={{
-                                fontSize: "0.7rem",
-                                color: "background.paper",
-                                borderColor: "background.paper",
-                                backgroundColor: "success.main",
-                              }}
-                            />
-                          ))}
-                        </Box>
-                      )}
-                    </CardContent>
-
-                    <CardActions
-                      sx={{
-                        justifyContent: "space-between",
-                        padding: "8px 16px",
-                        borderTop: "1px solid",
-                        borderColor: "divider",
-                        bgcolor: "background.paper",
-                      }}
-                    >
-                      <Box>
-                        <IconButton
-                          onClick={() => handleOpenModal(news)}
-                          size="small"
-                          sx={{
-                            color: "text.secondary",
-                            "&:hover": {
-                              backgroundColor: "primary.main",
-                              color: "primary.contrastText",
-                            },
-                          }}
-                        >
-                          <Edit fontSize="small" />
-                        </IconButton>
-                        <IconButton
-                          onClick={() => handleDeleteNews(news.newsId)}
-                          size="small"
-                          sx={{
-                            color: "text.secondary",
-                            "&:hover": {
-                              backgroundColor: "error.main",
-                              color: "error.contrastText",
-                            },
-                          }}
-                        >
-                          <Delete fontSize="small" />
-                        </IconButton>
-                      </Box>
-                      <FormControl size="small" sx={{ minWidth: 120 }}>
-                        <Select
-                          value={news.newsStatus}
-                          onChange={(e) =>
-                            handleStatusChange(e.target.value, news.newsId)
-                          }
-                          sx={{
-                            height: 36,
-                            "& .MuiSelect-select": {
-                              py: 0.5,
-                              fontSize: "0.875rem",
-                            },
-                          }}
-                        >
-                          {newsStatus.map((status) => (
-                            <MenuItem key={status.key} value={status.key}>
-                              {status.value}
-                            </MenuItem>
-                          ))}
-                        </Select>
-                      </FormControl>
-                    </CardActions>
-                  </Card>
-                </Grid>
-              ))}
-            </Grid>
-          )}
+          {content}
         </Box>
 
         {/* Pagination - Bottom Right */}
@@ -449,6 +481,7 @@ const NewsComponent = () => {
               alignItems: "center",
               mt: 2,
               pr: 2,
+              height: 10,
             }}
           >
             <Button
@@ -485,7 +518,11 @@ const NewsComponent = () => {
           onSave={handleSaveNews}
           news={selectedNews || undefined}
         />
-
+        <ViewNewsModal
+          open={viewModalOpen}
+          onClose={() => setViewModalOpen(false)}
+          news={viewingNews}
+        />
         <ConfirmDelete
           open={deleteConfirmation.open}
           onCancel={cancelDelete}

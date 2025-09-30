@@ -1,4 +1,5 @@
 import { Method } from "axios";
+import FingerprintJS from "@fingerprintjs/fingerprintjs";
 
 export const API_URLS = {
   AUTH_CHECK: "auth/check",
@@ -35,6 +36,8 @@ export const API_URLS = {
   PRACTICE_DASHBOARD: "practice/dashboard/portal",
   PROGRAM_DASHBOARD: "program/dashboard/portal",
   SHORTS_DASHBOARD: "shorts/dashboard/portal",
+  NEWS_DASHBOARD: "news/dashboard/portal",
+  NOTIFICATION_FCM_TOKEN: "notification/fcm/token",
 } as const;
 
 export const API_METHODS: Record<string, Method> = {
@@ -104,7 +107,7 @@ const getLocalStorageItem = (key: string) => {
 };
 export const storedToken = localStorage.getItem("token") ?? null;
 export const storedUserData = getLocalStorageItem("userData") ?? {};
-export const storedRole = getLocalStorageItem("role") ?? null;
+export const storedRole = localStorage.getItem("role") ?? null;
 
 export const LOCAL_STORAGE_KEYS = {
   TOKEN: "token",
@@ -140,3 +143,18 @@ export const FALLBACK_SHORTS_THUMBNAIL =
   "https://irai-yoga-v1.blr1.cdn.digitaloceanspaces.com/irai-yoga-v1-website-public/short-banner-image-default.jpg";
 
 export const KEYCLOAK_USER = "KEYCLOAK_USER";
+
+export const getDeviceInfo = async () => {
+  const fp = await FingerprintJS.load();
+  const result = await fp.get();
+
+  const deviceCode = result.visitorId;
+  const userAgent = navigator.userAgent;
+  const browserNameRegex = /(Chrome|Firefox|Safari|Edge|Opera)/i;
+  const browserNameMatch = browserNameRegex.exec(userAgent);
+
+  const deviceName = `${browserNameMatch?.[0] ?? "Browser"} `;
+  const deviceType = "WEB";
+
+  return { deviceCode, deviceName, deviceType };
+};

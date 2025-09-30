@@ -17,16 +17,7 @@ export const ProfileFormElementsArray = [
   { id: "organizationName", label: "Organization Name", required: true },
 ];
 
-export const profileAppButtonsArray = [
-  { id: "appLanguage", label: "App Language" },
-  { id: "notification", label: "Notification" },
-  { id: "generalSetting", label: "General Setting" },
-  { id: "inviteMyFriend", label: "Invite My Friend" },
-];
-
 export const profileAppButtonsSecondaryArray = [
-  { id: "customerCare", label: "Customer Care" },
-  { id: "rateUs", label: "Rate Us" },
   { id: "deleteYourAccount", label: "Delete Your Account" },
   { id: "reset-password", label: "Reset Password" },
 ];

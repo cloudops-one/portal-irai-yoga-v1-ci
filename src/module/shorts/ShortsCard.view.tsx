@@ -58,9 +58,8 @@ const ShortCard: React.FC<ShortCardProps> = ({
     updateShortsStatus(
       { shortsId, status: newStatus },
       {
-        onSuccess: async () => {
-          await refetch();
-          // Clear the local status after successful refetch
+        onSuccess: () => {
+          refetch();
           setLocalStatus((prev) => {
             const newPrev = { ...prev };
             delete newPrev[shortsId];
@@ -69,7 +68,6 @@ const ShortCard: React.FC<ShortCardProps> = ({
           showSnackbar("Status updated", SNACKBAR_SEVERITY.SUCCESS);
         },
         onError: (error) => {
-          // Revert on error
           setLocalStatus((prev) => {
             const newPrev = { ...prev };
             delete newPrev[shortsId];

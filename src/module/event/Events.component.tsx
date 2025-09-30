@@ -43,7 +43,6 @@ import {
   useUpdateEventStatus,
 } from "./Events.service";
 import { EventType, EventFieldPath } from "./Events.type";
-
 import { useForm, Controller } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import { eventValidationSchema, formDataInitialState } from "./Events.const";
@@ -53,9 +52,15 @@ import { DateTimePicker } from "@mui/x-date-pickers/DateTimePicker";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import dayjs from "dayjs";
 import * as yup from "yup";
-import CountrySelect from "../../component/CountrySelect";
-import { useCountryCurrencySettings } from "../../component/CountrySelect";
-import { SNACKBAR_SEVERITY, SnackbarSeverity } from "../../common/App.const";
+import CountrySelect, {
+  useCountryCurrencySettings,
+} from "../../component/CountrySelect";
+import {
+  SNACKBAR_SEVERITY,
+  SnackbarSeverity,
+  FALLBACK_BANNER,
+  FALLBACK_LOGO,
+} from "../../common/App.const";
 import OrganizationDropdown from "../organization/OrganizationDropdown.component";
 import { ProfilePictureUpload } from "../../component/ProfilePictureUpload";
 import ConfirmDelete from "../../component/ConfirmDelete.dialog";
@@ -68,7 +73,6 @@ import theme from "../../common/App.theme";
 import PhoneInput from "react-phone-number-input";
 import "react-phone-number-input/style.css";
 import styles from "../../module/auth/Auth.module.css";
-import { FALLBACK_BANNER, FALLBACK_LOGO } from "../../common/App.const";
 
 interface FormContext {
   bannerInputType: "file" | "url";
@@ -221,24 +225,33 @@ const EventsComponent = () => {
   };
 
   const confirmDelete = () => {
-    // Perform the delete operation
     if (deleteConfirmation.eventId) {
       deleteEvent(
         { eventId: deleteConfirmation.eventId },
         {
-          onSuccess: async (response: { message?: string }) => {
-            await refetch();
-            showSuccess(response.message ?? "Event deleted successfully");
-
-            setDeleteConfirmation({ open: false, eventId: null }); // Close modal after success
+          onSuccess: (response: { message?: string }) => {
+            try {
+              refetch();
+              const successMessage =
+                response.message ?? "Event deleted successfully";
+              showSuccess(successMessage);
+            } catch (refetchError) {
+              console.error("Failed to refetch after deletion:", refetchError);
+              // Still show success since deletion worked
+              showSuccess("Event deleted successfully");
+            } finally {
+              setDeleteConfirmation({ open: false, eventId: null });
+            }
           },
+
           onError: (error) => {
+            // Type-safe error handling
             const errorMessage =
               (error.response?.data as { errorMessage?: string })
-                ?.errorMessage ||
-              error.message ||
-              "Failed to delete status";
-            console.error("Failed to delete status:", errorMessage);
+                ?.errorMessage ??
+              error.message ??
+              "Failed to get Organization details";
+            console.error("Failed to get Organization details:", errorMessage);
             showError(errorMessage);
             setDeleteConfirmation({ open: false, eventId: null });
           },
@@ -275,14 +288,14 @@ const EventsComponent = () => {
           setAddressCountries(eventData.addresses);
           setOpen(true);
           showSnackbar(
-            response.message || "Event details loaded successfully",
+            response.message ?? "Event details loaded successfully",
             SNACKBAR_SEVERITY.SUCCESS,
           );
         },
         onError: (error) => {
           const errorMessage =
-            (error.response?.data as { errorMessage?: string })?.errorMessage ||
-            error.message ||
+            (error.response?.data as { errorMessage?: string })?.errorMessage ??
+            error.message ??
             "Failed to get event details";
           console.error("Failed to get event details:", errorMessage);
           showError(errorMessage);
@@ -306,22 +319,22 @@ const EventsComponent = () => {
       orgId: data.orgId,
       eventBannerStorageId:
         bannerInputType === "file"
-          ? data.eventBannerStorageId || undefined
+          ? (data.eventBannerStorageId ?? undefined)
           : undefined,
 
       eventBannerExternalUrl:
         bannerInputType === "url"
-          ? data.eventBannerExternalUrl || undefined
+          ? (data.eventBannerExternalUrl ?? undefined)
           : undefined,
 
       eventIconStorageId:
         iconInputType === "file"
-          ? data.eventIconStorageId || undefined
+          ? (data.eventIconStorageId ?? undefined)
           : undefined,
 
       eventIconExternalUrl:
         iconInputType === "url"
-          ? data.eventIconExternalUrl || undefined
+          ? (data.eventIconExternalUrl ?? undefined)
           : undefined,
     };
     try {
@@ -333,13 +346,13 @@ const EventsComponent = () => {
             setOpen(false);
             reset(formDataInitialState);
             setSelectedCountries({});
-            showSuccess(response.message || "Event added successfully");
+            showSuccess(response.message ?? "Event added successfully");
           },
           onError: (error) => {
             const errorMessage =
               (error.response?.data as { errorMessage?: string })
-                ?.errorMessage ||
-              error.message ||
+                ?.errorMessage ??
+              error.message ??
               "Failed to add event";
             showSnackbar(errorMessage, SNACKBAR_SEVERITY.ERROR);
           },
@@ -385,7 +398,7 @@ const EventsComponent = () => {
         { ...cleanedData },
         {
           onSuccess: (response: { message?: string }) => {
-            showSuccess(response.message || "Event updated successfully");
+            showSuccess(response.message ?? "Event updated successfully");
             refetch();
             setOpen(false);
             reset(formDataInitialState);
@@ -395,8 +408,8 @@ const EventsComponent = () => {
           onError: (error) => {
             const errorMessage =
               (error.response?.data as { errorMessage?: string })
-                ?.errorMessage ||
-              error.message ||
+                ?.errorMessage ??
+              error.message ??
               "Failed to update event";
             console.error("Failed to update event:", errorMessage);
             showError(errorMessage);
@@ -425,11 +438,17 @@ const EventsComponent = () => {
         : never;
 
   const humanizeField = (field: string): string => {
-    const words = field.match(
-      /[A-Z]{2,}(?=[A-Z][a-z]+[0-9]*|\b)|[A-Z]?[a-z]+[0-9]*|[A-Z]|[0-9]+/g,
-    );
-    if (!words) return field;
-    return words.map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+    // Insert spaces before capital letters or numbers
+    const words = field
+      .replace(/([a-z])([A-Z])/g, "$1 $2") // camelCase → camel Case
+      .replace(/([A-Z])([A-Z][a-z])/g, "$1 $2") // acronyms → split APIResponse → API Response
+      .replace(/(\d+)/g, " $1") // numbers → split order123 → order 123
+      .split(/[\s_]+/); // also split snake_case or kebab-case
+
+    return words
+      .filter(Boolean)
+      .map((w) => w[0].toUpperCase() + w.slice(1).toLowerCase())
+      .join(" ");
   };
 
   const renderFieldArray = (key: "addresses" | "contacts" | "urls") => {
@@ -461,10 +480,9 @@ const EventsComponent = () => {
           <AccordionDetails>
             {array?.map((item, index) => {
               const contactId = `${key}-${index}`;
-
               return (
                 <Box
-                  key={index}
+                  key={item.id}
                   mb={3}
                   p={2}
                   borderBottom="1px solid #ccc"
@@ -483,9 +501,6 @@ const EventsComponent = () => {
                   {fields.map((field) => {
                     const fieldName =
                       `${key}.${index}.${field}` as EventFieldPath;
-
-                    // Render CountrySelect for country fields
-                    // In your renderFieldArray function, update the CountrySelect part:
                     if (field === "country" && key === "addresses") {
                       return (
                         <Box key={field} sx={{ mt: 2 }}>
@@ -493,27 +508,32 @@ const EventsComponent = () => {
                             name={fieldName}
                             control={control}
                             render={({ field: controllerField }) => {
-                              // Get the current country value for this address
                               const currentCountry =
                                 selectedCountries[contactId];
+                              const handleCountryChange = (
+                                _event: unknown,
+                                newValue: CountryOption | null,
+                              ) => {
+                                const newSelectedCountries: Record<
+                                  string,
+                                  CountryOption | null
+                                > = {
+                                  ...selectedCountries,
+                                  [contactId]: newValue,
+                                };
+                                setSelectedCountries(newSelectedCountries);
+                                controllerField.onChange(newValue?.label ?? "");
+                              };
 
                               return (
                                 <CountrySelect
-                                  value={currentCountry || null}
-                                  onChange={(_event, newValue) => {
-                                    const newSelectedCountries = {
-                                      ...selectedCountries,
-                                      [contactId]: newValue,
-                                    };
-                                    setSelectedCountries(newSelectedCountries);
-                                    controllerField.onChange(
-                                      newValue?.label || "",
-                                    );
-                                  }}
+                                  value={currentCountry ?? null}
+                                  onChange={handleCountryChange}
                                 />
                               );
                             }}
                           />
+
                           {errors.addresses?.[index]?.country && (
                             <Typography color="error" variant="body2">
                               {errors.addresses?.[index]?.country?.message}
@@ -530,40 +550,48 @@ const EventsComponent = () => {
                           <Controller
                             name={fieldName}
                             control={control}
-                            render={({ field: controllerField }) => (
-                              <div className={styles["phone-input-wrapper"]}>
-                                <PhoneInput
-                                  international
-                                  defaultCountry="IN"
-                                  value={
-                                    typeof controllerField.value === "string"
-                                      ? controllerField.value
-                                      : ""
-                                  }
-                                  onChange={(value) => {
-                                    controllerField.onChange(value || "");
-                                  }}
-                                  withCountryCallingCode
-                                  countryCallingCodeEditable={false}
-                                  placeholder="Enter phone number"
-                                  className={styles.PhoneInput}
-                                  inputClassName={styles.PhoneInputInput}
-                                  dropdownClassName={
-                                    styles.PhoneInputCountryDropdown
-                                  }
-                                  style={{
-                                    "--PhoneInput-color--focus": "#1976d2",
-                                    "--PhoneInputCountryFlag-height": "24px",
-                                    "--PhoneInputCountryFlag-width": "24px",
-                                    "--PhoneInputCountrySelectArrow-color":
-                                      "#555",
-                                    "--PhoneInputCountrySelectArrow-opacity":
-                                      "1",
-                                  }}
-                                />
-                              </div>
-                            )}
+                            render={({ field: controllerField }) => {
+                              const value =
+                                typeof controllerField.value === "string"
+                                  ? controllerField.value
+                                  : "";
+
+                              const handlePhoneChange = (
+                                newValue: string | undefined,
+                              ) => {
+                                controllerField.onChange(newValue ?? "");
+                              };
+
+                              return (
+                                <div className={styles["phone-input-wrapper"]}>
+                                  <PhoneInput
+                                    international
+                                    defaultCountry="IN"
+                                    value={value}
+                                    onChange={handlePhoneChange}
+                                    withCountryCallingCode
+                                    countryCallingCodeEditable={false}
+                                    placeholder="Enter phone number"
+                                    className={styles.PhoneInput}
+                                    inputClassName={styles.PhoneInputInput}
+                                    dropdownClassName={
+                                      styles.PhoneInputCountryDropdown
+                                    }
+                                    style={{
+                                      "--PhoneInput-color--focus": "#1976d2",
+                                      "--PhoneInputCountryFlag-height": "24px",
+                                      "--PhoneInputCountryFlag-width": "24px",
+                                      "--PhoneInputCountrySelectArrow-color":
+                                        "#555",
+                                      "--PhoneInputCountrySelectArrow-opacity":
+                                        "1",
+                                    }}
+                                  />
+                                </div>
+                              );
+                            }}
                           />
+
                           {errors.contacts?.[index]?.mobile && (
                             <Typography color="error" variant="body2">
                               {errors.contacts?.[index]?.mobile?.message}
@@ -572,7 +600,6 @@ const EventsComponent = () => {
                         </Box>
                       );
                     }
-
                     // Render dropdown for URL type
                     if (field === "type" && key === "urls") {
                       return (
@@ -580,59 +607,61 @@ const EventsComponent = () => {
                           key={field}
                           name={fieldName}
                           control={control}
-                          render={({ field: controllerField }) => (
-                            <TextField
-                              {...controllerField}
-                              select
-                              label="URL Type"
-                              fullWidth
-                              size="small"
-                              margin="normal"
-                              error={
-                                Array.isArray(errors[key]) &&
-                                !!errors[key]?.[index]?.[field]
-                              }
-                              helperText={
-                                Array.isArray(errors[key])
-                                  ? errors[key]?.[index]?.[field]?.message
-                                  : undefined
-                              }
-                            >
-                              {urlType.map((option) => (
-                                <MenuItem key={option.key} value={option.key}>
-                                  {option.value}
-                                </MenuItem>
-                              ))}
-                            </TextField>
-                          )}
+                          render={({ field: controllerField }) => {
+                            const fieldErrors = Array.isArray(errors[key])
+                              ? errors[key]?.[index]
+                              : undefined;
+                            const fieldError = fieldErrors?.[field];
+                            const isError = !!fieldError;
+                            const helperText = fieldError?.message;
+
+                            return (
+                              <TextField
+                                {...controllerField}
+                                select
+                                label="URL Type"
+                                fullWidth
+                                size="small"
+                                margin="normal"
+                                error={isError}
+                                helperText={helperText}
+                              >
+                                {urlType.map((option) => (
+                                  <MenuItem key={option.key} value={option.key}>
+                                    {option.value}
+                                  </MenuItem>
+                                ))}
+                              </TextField>
+                            );
+                          }}
                         />
                       );
                     }
-
-                    // Default text field
                     return (
                       <Controller
                         key={field}
                         name={fieldName}
                         control={control}
-                        render={({ field: controllerField }) => (
-                          <TextField
-                            {...controllerField}
-                            label={humanizeField(field ?? "")}
-                            fullWidth
-                            size="small"
-                            margin="normal"
-                            error={
-                              Array.isArray(errors[key]) &&
-                              !!errors[key]?.[index]?.[field]
-                            }
-                            helperText={
-                              Array.isArray(errors[key])
-                                ? errors[key]?.[index]?.[field]?.message
-                                : undefined
-                            }
-                          />
-                        )}
+                        render={({ field: controllerField }) => {
+                          const fieldErrors = Array.isArray(errors[key])
+                            ? errors[key]?.[index]
+                            : undefined;
+                          const fieldError = fieldErrors?.[field];
+                          const isError = !!fieldError;
+                          const helperText = fieldError?.message;
+
+                          return (
+                            <TextField
+                              {...controllerField}
+                              label={humanizeField(field ?? "")}
+                              fullWidth
+                              size="small"
+                              margin="normal"
+                              error={isError}
+                              helperText={helperText}
+                            />
+                          );
+                        }}
                       />
                     );
                   })}
@@ -643,18 +672,21 @@ const EventsComponent = () => {
                       <Controller
                         name={`${key}.${index}.isPrimary` as EventFieldPath}
                         control={control}
-                        render={({ field }) => (
-                          <Switch
-                            checked={!!field.value}
-                            onChange={() => {
-                              const updated = array.map((item, i) => ({
-                                ...item,
-                                isPrimary: i === index,
-                              })) as ArrayType<typeof key>;
-                              setValue(key, updated);
-                            }}
-                          />
-                        )}
+                        render={({ field }) => {
+                          return (
+                            <Switch
+                              checked={!!field.value}
+                              onChange={() => {
+                                const updated = array.map((item, i) => ({
+                                  ...item,
+                                  isPrimary: i === index,
+                                })) as ArrayType<typeof key>;
+
+                                setValue(key, updated);
+                              }}
+                            />
+                          );
+                        }}
                       />
                     </Box>
                   )}
@@ -678,31 +710,37 @@ const EventsComponent = () => {
 
             <Button
               onClick={() => {
-                const empty =
-                  key === "addresses"
-                    ? {
-                        addressLine1: "",
-                        addressLine2: "",
-                        city: "",
-                        stateProvince: "",
-                        postalCode: "",
-                        country: "",
-                        isPrimary: array.length === 0,
-                      }
-                    : key === "contacts"
-                      ? {
-                          name: "",
-                          mobile: "",
-                          email: "",
-                          country: "",
-                          isPrimary: array.length === 0,
-                        }
-                      : { url: "", type: "" };
+                let empty;
+                if (key === "addresses") {
+                  empty = {
+                    addressLine1: "",
+                    addressLine2: "",
+                    city: "",
+                    stateProvince: "",
+                    postalCode: "",
+                    country: "",
+                    isPrimary: array.length === 0,
+                  };
+                } else if (key === "contacts") {
+                  empty = {
+                    name: "",
+                    mobile: "",
+                    email: "",
+                    country: "",
+                    isPrimary: array.length === 0,
+                  };
+                } else {
+                  empty = {
+                    url: "",
+                    type: "",
+                  };
+                }
+
                 setValue(key, [...array, empty] as ArrayType<typeof key>);
               }}
               startIcon={<AddCircleIcon />}
             >
-              Add {key.slice(0, -1)}
+              Add {key.slice(0, -2)}
             </Button>
           </AccordionDetails>
         </Accordion>
@@ -801,40 +839,46 @@ const EventsComponent = () => {
         const eventId = params.row.eventId;
         const currentStatus = params.value;
 
+        const handleStatusChange = (eventId: string, newStatus: string) => {
+          updateEventStatus(
+            { eventId, status: newStatus },
+            {
+              onSuccess: (response: { message?: string }) => {
+                // Update local state optimistically
+                setCurrentItems((prevItems) =>
+                  prevItems.map((item) =>
+                    item.eventId === eventId
+                      ? { ...item, eventStatus: newStatus }
+                      : item,
+                  ),
+                );
+                const successMessage =
+                  response.message ?? "Status updated successfully";
+                showSuccess(successMessage);
+
+                // Refetch to ensure data consistency
+                refetch();
+              },
+
+              onError: (error) => {
+                // Type-safe error handling
+                const errorMessage =
+                  (error.response?.data as { errorMessage?: string })
+                    ?.errorMessage ??
+                  error.message ??
+                  "Failed to update status";
+                console.error("Failed to update status:", errorMessage);
+                showError(errorMessage);
+              },
+            },
+          );
+        };
+
         return (
           <Select
             value={currentStatus}
-            onClick={(event) => event.stopPropagation()}
-            onChange={(e) => {
-              const newStatus = e.target.value;
-              updateEventStatus(
-                { eventId, status: newStatus },
-                {
-                  onSuccess: (response: { message?: string }) => {
-                    setCurrentItems((prevItems) =>
-                      prevItems.map((item) =>
-                        item.eventId === eventId
-                          ? { ...item, eventStatus: newStatus }
-                          : item,
-                      ),
-                    );
-                    showSuccess(
-                      response.message || "Status updated successfully",
-                    );
-                    refetch();
-                  },
-                  onError: (error) => {
-                    const errorMessage =
-                      (error.response?.data as { errorMessage?: string })
-                        ?.errorMessage ||
-                      error.message ||
-                      "Failed to update status";
-                    console.error("Failed to update status:", errorMessage);
-                    showError(errorMessage);
-                  },
-                },
-              );
-            }}
+            onClick={(e) => e.stopPropagation()}
+            onChange={(e) => handleStatusChange(eventId, e.target.value)}
             size="small"
             fullWidth
             disabled={isUpdateEventStatusPending}
@@ -1061,11 +1105,11 @@ const EventsComponent = () => {
                         }}
                         moduleType="EVENT"
                         initialPreviewUrl={
-                          editData?.eventBannerStorageUrl ||
-                          editData?.eventBannerExternalUrl ||
+                          editData?.eventBannerStorageUrl ??
+                          editData?.eventBannerExternalUrl ??
                           ""
                         }
-                        existingFileId={editData?.eventBannerStorageId || ""}
+                        existingFileId={editData?.eventBannerStorageId ?? ""}
                         fallbackImageUrl={FALLBACK_BANNER}
                         width={1024}
                         height={500}
@@ -1089,7 +1133,7 @@ const EventsComponent = () => {
                   render={({ field }) => (
                     <TextField
                       {...field}
-                      value={field.value || ""}
+                      value={field.value ?? ""}
                       label="Banner URL"
                       fullWidth
                       margin="normal"
@@ -1142,11 +1186,11 @@ const EventsComponent = () => {
                         }}
                         moduleType="EVENT"
                         initialPreviewUrl={
-                          editData?.eventIconStorageUrl ||
-                          editData?.eventIconExternalUrl ||
+                          editData?.eventIconStorageUrl ??
+                          editData?.eventIconExternalUrl ??
                           ""
                         }
-                        existingFileId={editData?.eventIconStorageId || ""}
+                        existingFileId={editData?.eventIconStorageId ?? ""}
                         fallbackImageUrl={FALLBACK_LOGO}
                         width={150}
                         height={150}
@@ -1170,7 +1214,7 @@ const EventsComponent = () => {
                   render={({ field }) => (
                     <TextField
                       {...field}
-                      value={field.value || ""}
+                      value={field.value ?? ""}
                       label="Icon URL"
                       fullWidth
                       margin="normal"

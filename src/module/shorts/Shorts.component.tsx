@@ -113,8 +113,8 @@ const ShortsComponent = () => {
         },
         onError(error) {
           const errorMessage =
-            (error.response?.data as { errorMessage?: string })?.errorMessage ||
-            error.message ||
+            (error.response?.data as { errorMessage?: string })?.errorMessage ??
+            error.message ??
             "failed to get Shorts Details";
           console.error("failed to get shorts Details");
           showError(errorMessage);
@@ -138,16 +138,16 @@ const ShortsComponent = () => {
       deleteShorts(
         { shortsId: deleteConfirmation.shortsId },
         {
-          onSuccess: async (response: { message?: string }) => {
-            await refetch();
-            showSuccess(response.message || "Short deleted successfully");
+          onSuccess: (response: { message?: string }) => {
+            refetch();
+            showSuccess(response.message ?? "Short deleted successfully");
             setDeleteConfirmation({ open: false, shortsId: null });
           },
           onError: (error) => {
             const errorMessage =
               (error.response?.data as { errorMessage?: string })
-                ?.errorMessage ||
-              error.message ||
+                ?.errorMessage ??
+              error.message ??
               "Failed to delete short";
             console.error("Failed to delete short:", errorMessage);
             showError(errorMessage);
@@ -175,12 +175,12 @@ const ShortsComponent = () => {
   const gridRef = useRef<HTMLDivElement | null>(null);
 
   const getShortVideoUrl = (short: ShortsType) =>
-    short.shortsStorageUrl ? short.shortsStorageUrl : short.shortsExternalUrl!;
+    short.shortsStorageUrl ?? short.shortsExternalUrl;
   const getShortBannerUrl = (short: ShortsType) =>
-    short.shortsBannerStorageUrl || short.shortsBannerExternalUrl || "";
+    short.shortsBannerStorageUrl ?? short.shortsBannerExternalUrl ?? "";
 
   const activeShort = shorts.find((s) => s.shortsId === activeShortId);
-  const singleGetLoadings = isDeleteShortsPending || isGetShortsByIdPending;
+  const singleGetLoadings = isDeleteShortsPending ?? isGetShortsByIdPending;
   return (
     <Box>
       <FullHeightDataGridContainer>
@@ -254,7 +254,11 @@ const ShortsComponent = () => {
                     backgroundColor: "#000",
                     borderRadius: "8px",
                   }}
-                />
+                >
+                  {" "}
+                  <track default kind="captions" srcLang="en" src="" />
+                </video>
+
                 <Box
                   sx={{
                     position: "absolute",

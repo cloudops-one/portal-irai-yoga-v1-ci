@@ -30,13 +30,13 @@ import {
   useSignUpPassword,
 } from "./Auth.service";
 import {
+  getDeviceInfo,
   KEYCLOAK_USER,
   ROUTE_PATHS,
   SNACKBAR_SEVERITY,
   SnackbarSeverity,
 } from "../../common/App.const";
 import { jwtDecode, JwtPayload } from "jwt-decode";
-import FingerprintJS from "@fingerprintjs/fingerprintjs";
 import { useNavigate } from "react-router-dom";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
@@ -78,7 +78,6 @@ const Auth = () => {
     SNACKBAR_SEVERITY.INFO,
   );
   const [phoneValue, setPhoneValue] = useState<string>("");
-
   const [activeTab, setActiveTab] = useState<"email" | "mobile">("email");
   const [mode, setMode] = useState<"login" | "forgotPassword">("login");
   const [forgotPasswordStep, setForgotPasswordStep] = useState<1 | 2 | 3>(1);
@@ -141,30 +140,13 @@ const Auth = () => {
   const { verifyOtp, isVerfifyOtpPending } = useVerifyOtp();
   const { signUpPassword, isSignUpPasswordPending } = useSignUpPassword();
 
-  const getDeviceInfo = async () => {
-    const fp = await FingerprintJS.load();
-    const result = await fp.get();
-
-    const deviceCode = result.visitorId;
-    const userAgent = navigator.userAgent;
-    const platform = navigator.platform;
-    const browserNameMatch = userAgent.match(
-      /(Chrome|Firefox|Safari|Edge|Opera)/i,
-    );
-
-    const deviceName = `${browserNameMatch?.[0] ?? "Browser"} on ${platform}`;
-    const deviceType = "WEB";
-
-    return { deviceCode, deviceName, deviceType };
-  };
-
   const handleKeycloakLogin = async () => {
     try {
       const authenticated = await initializeKeycloak();
 
       if (authenticated) {
-        const token = keycloak.token || "";
-        const refreshToken = keycloak.refreshToken || "";
+        const token = keycloak.token ?? "";
+        const refreshToken = keycloak.refreshToken ?? "";
         setToken(token);
         localStorage.setItem("token", token);
         if (refreshToken && typeof refreshToken === "string") {
@@ -221,7 +203,7 @@ const Auth = () => {
 
             if (decoded?.role) {
               setData("role", decoded.role);
-              localStorage.setItem("role", decoded.role);
+              localStorage.setItem("role", JSON.stringify(decoded.role));
             }
 
             if (decoded?.sub) {
@@ -531,7 +513,7 @@ const Auth = () => {
 
           {mode === "login" ? (
             <>
-              <p className="text-md text-gray-600 text-center mb-3">
+              <p className="text-md text-gray-600 text-center mb-1">
                 Please Sign In to your account
               </p>
 
@@ -552,7 +534,7 @@ const Auth = () => {
                     <Tabs
                       value={activeTab}
                       onChange={(_, newValue) => setActiveTab(newValue)}
-                      TabIndicatorProps={{ style: { display: "none" } }}
+                      slotProps={{ indicator: { style: { display: "none" } } }}
                       variant="fullWidth"
                       sx={{
                         width: "100%",
@@ -701,7 +683,7 @@ const Auth = () => {
                   }
                   fullWidth
                   sx={{
-                    ...(activeTab === "email" ? { mb: 2 } : { mb: 2 }),
+                    mb: 2,
                   }}
                 >
                   {isEmailSignInPending || isMobileSignInPending ? (
@@ -746,7 +728,9 @@ const Auth = () => {
                       <Tabs
                         value={activeTab}
                         onChange={(_, newValue) => setActiveTab(newValue)}
-                        TabIndicatorProps={{ style: { display: "none" } }}
+                        slotProps={{
+                          indicator: { style: { display: "none" } },
+                        }}
                         variant="fullWidth"
                         sx={{
                           width: "100%",
@@ -858,7 +842,7 @@ const Auth = () => {
                     }
                     fullWidth
                     sx={{
-                      ...(activeTab === "email" ? { mb: 1 } : { mb: 1 }),
+                      mb: 1,
                     }}
                   >
                     {isForgotPasswordEmailPending ||

@@ -32,9 +32,12 @@ export const useGetNews = (
       direction,
     },
   });
-  useEffect(() => {
-    // refetch();
-  }, [paginationModel.page, paginationModel.pageSize, searchTerm, sortModel]);
+  useEffect(() => {}, [
+    paginationModel.page,
+    paginationModel.pageSize,
+    searchTerm,
+    sortModel,
+  ]);
   useEffect(() => {
     if (!data) return;
     const items: NewsType[] = data.data;

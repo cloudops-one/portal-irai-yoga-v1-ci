@@ -41,7 +41,7 @@ export interface Lesson {
   lessonName: string;
   lessonStorageId?: string;
   lessonExternalUrl?: string;
-  duration?: number;
+  duration: number;
   lessonDescription?: string;
   lessonText?: string;
   lessonOrder?: number;
@@ -77,7 +77,7 @@ export interface LessonFormData {
   lessonStorageId?: string;
   lessonStorageUrl?: string;
   lessonExternalUrl?: string;
-  duration?: number;
+  duration: number;
   lessonOrder?: number;
 }
 

@@ -8,7 +8,6 @@ interface SettingProfilePictureUploadProps {
   existingFileId?: string;
   disabled?: boolean;
   viewMode?: boolean;
-  onClear?: () => void;
 }
 
 interface FileUploadResponse {

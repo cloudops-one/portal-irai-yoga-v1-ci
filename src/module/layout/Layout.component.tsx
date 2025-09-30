@@ -22,13 +22,17 @@ import PowerSettingsNewIcon from "@mui/icons-material/PowerSettingsNew";
 import SnackBar from "../../component/SnackBar";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useStore } from "../../common/App.store";
-import { ROUTE_PATHS, MODULES } from "../../common/App.const";
 import LayoutModal from "../../component/LayoutModal";
 import { Menus, MenuItem } from "./Layout.const";
 import LayoutHeader from "../../component/LayoutHeader";
 import { useUserSignout } from "../auth/Auth.service";
 import { AxiosError } from "axios";
-import { SNACKBAR_SEVERITY, SnackbarSeverity } from "../../common/App.const";
+import {
+  SNACKBAR_SEVERITY,
+  SnackbarSeverity,
+  ROUTE_PATHS,
+  MODULES,
+} from "../../common/App.const";
 
 const drawerWidth = 240;
 const miniWidth = 90;
@@ -101,7 +105,7 @@ const ResponsiveDrawer: React.FC<Props> = (props) => {
   // Filter menus based on role
   const filteredMenus = Menus.filter((menu) => {
     // If role is PORTAL_USER, hide SETTING menu
-    if (role === "PORTAL_USER" && menu.title === MODULES.SETTING) {
+    if (role == "PORTAL_USER" && menu.title === MODULES.SETTING) {
       return false;
     }
     // KEYCLOAK_USER sees all menus
@@ -112,47 +116,55 @@ const ResponsiveDrawer: React.FC<Props> = (props) => {
     handleOpen();
   };
 
-  const handleSignOutConfirmation = () => {
+  const handleSignOutConfirmation = async (): Promise<void> => {
     const userId = localStorage.getItem("userId");
     setSignoutLoading(true);
 
     try {
       const payload = { userId };
-      userSignout(payload, {
-        onSuccess: (responseData: { message?: string }) => {
-          setSignoutLoading(false);
 
-          handleClose();
-          clearTokens();
-          localStorage.removeItem("userId");
-          localStorage.removeItem("role");
-          navigate(ROUTE_PATHS?.ROOT_ROUTE);
-          setSnackbarMessage(
-            responseData?.message ?? "Signed out successfully!",
-          );
-          setSnackbarSeverity(SNACKBAR_SEVERITY.SUCCESS);
-          setOpenSnackbar(true);
-        },
-        onError: (error: AxiosError) => {
-          setSignoutLoading(false);
+      // Create a promise for the signout operation
+      await new Promise<void>((resolve, reject) => {
+        userSignout(payload, {
+          onSuccess: (responseData: { message?: string }) => {
+            setSignoutLoading(false);
+            setSnackbarMessage(
+              responseData?.message ?? "Signed out successfully!",
+            );
+            setSnackbarSeverity(SNACKBAR_SEVERITY.SUCCESS);
+            setOpenSnackbar(true);
 
-          const errorMessage =
-            (error.response?.data as { message?: string })?.message ??
-            error.message;
-          setSnackbarMessage(errorMessage);
-          setSnackbarSeverity(SNACKBAR_SEVERITY.ERROR);
-          setOpenSnackbar(true);
-        },
+            // Only clear storage and navigate after successful API call
+            clearTokens();
+            localStorage.removeItem("userId");
+            localStorage.removeItem("role");
+            localStorage.removeItem("notifications");
+            navigate(ROUTE_PATHS?.ROOT_ROUTE);
+            handleClose();
+            resolve();
+          },
+          onError: (error: AxiosError) => {
+            setSignoutLoading(false);
+            const errorMessage =
+              (error.response?.data as { message?: string })?.message ??
+              error.message;
+            setSnackbarMessage(errorMessage);
+            setSnackbarSeverity(SNACKBAR_SEVERITY.ERROR);
+            setOpenSnackbar(true);
+            reject(new Error(errorMessage));
+          },
+        });
       });
     } catch (err: unknown) {
       setSignoutLoading(false);
       if (err instanceof Error) {
         setSnackbarMessage(err.message);
       } else {
-        setSnackbarMessage("An unknown error occurred");
+        setSnackbarMessage("An unknown error occurred during sign out");
       }
       setSnackbarSeverity(SNACKBAR_SEVERITY.ERROR);
       setOpenSnackbar(true);
+      throw err; // Re-throw to be caught by the modal
     }
   };
 

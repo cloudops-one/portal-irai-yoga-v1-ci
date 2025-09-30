@@ -80,7 +80,9 @@ apiClient.interceptors.response.use(
       console.error("Refresh token rejected by server");
       useStore.getState().clearTokens();
       window.location.href = ROUTE_PATHS.ROOT_ROUTE;
-      return Promise.reject(error);
+      return Promise.reject(
+        new Error(error instanceof Error ? error.message : String(error)),
+      );
     }
 
     if (status === 401 && !originalRequest._retry) {
@@ -96,7 +98,11 @@ apiClient.interceptors.response.use(
         console.error("Token refresh failed:", refreshError);
         useStore.getState().clearTokens();
         window.location.href = ROUTE_PATHS.ROOT_ROUTE;
-        return Promise.reject(refreshError);
+        return Promise.reject(
+          refreshError instanceof Error
+            ? refreshError
+            : new Error(String(refreshError)),
+        );
       }
     }
 
@@ -105,7 +111,9 @@ apiClient.interceptors.response.use(
       window.location.href = ROUTE_PATHS.ROOT_ROUTE;
     }
 
-    return Promise.reject(error);
+    return Promise.reject(
+      error instanceof Error ? error : new Error(String(error)),
+    );
   },
 );
 
@@ -157,12 +165,17 @@ export const useMutationApi = <
   params,
 }: UseApiProps): UseMutationResult<TData, TError, TVariables, TContext> => {
   const mutationFn = async (payload: TVariables): Promise<TData> => {
-    const finalUrl = getUrl?.(payload) || `${API_CONFIG.BASE_URL}${url}`;
+    const finalUrl = getUrl?.(payload) ?? `${API_CONFIG.BASE_URL}${url}`;
+    let computedParams;
+    if (params) {
+      if (typeof params === "function") {
+        computedParams = params(payload);
+      } else {
+        computedParams = params;
+      }
+    }
     const urlWithParams = params
-      ? buildUrlWithParams(
-          finalUrl,
-          typeof params === "function" ? params(payload) : params,
-        )
+      ? buildUrlWithParams(finalUrl, computedParams)
       : finalUrl;
     const { data } = await apiClient({
       method,
@@ -191,7 +204,7 @@ export const fetchSettings = async (
   const response = await apiClient.get<SettingResponse>(
     `${API_URLS.SETTING}/${settingName}`,
   );
-  return response.data.data.settingValue || [];
+  return response.data.data.settingValue ?? [];
 };
 
 export const useGetSettingsQuery = (settingName: string) => {

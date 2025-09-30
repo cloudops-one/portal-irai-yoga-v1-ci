@@ -24,9 +24,13 @@ import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import { CustomModal } from "../../component/Modal";
 import { useAddNews, useEditNews } from "./news.service";
-import { SNACKBAR_SEVERITY, SnackbarSeverity } from "../../common/App.const";
+import {
+  SNACKBAR_SEVERITY,
+  SnackbarSeverity,
+  FALLBACK_LOGO,
+  FALLBACK_BANNER,
+} from "../../common/App.const";
 import SnackBar from "../../component/SnackBar";
-import { FALLBACK_LOGO, FALLBACK_BANNER } from "../../common/App.const";
 import { useGetTag } from "../../common/App.service";
 import theme from "../../common/App.theme";
 
@@ -52,7 +56,7 @@ const NewsModal: React.FC<NewsModalProps> = ({
   const [bannerInputType, setBannerInputType] = useState<"file" | "url">(
     "file",
   );
-  const [tags, setTag] = useState<string[]>([]);
+  const [tags, setTags] = useState<string[]>([]);
   const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
@@ -103,12 +107,12 @@ const NewsModal: React.FC<NewsModalProps> = ({
       const formValues = {
         newsName: news.newsName,
         newsDescription: news.newsDescription,
-        isRecommended: news.isRecommended || false,
-        tags: news.tags || [],
-        newsIconStorageId: news.newsIconStorageId || "",
-        newsIconExternalUrl: news.newsIconExternalUrl || "",
-        newsBannerStorageId: news.newsBannerStorageId || "",
-        newsBannerExternalUrl: news.newsBannerExternalUrl || "",
+        isRecommended: news.isRecommended ?? false,
+        tags: news.tags ?? [],
+        newsIconStorageId: news.newsIconStorageId ?? "",
+        newsIconExternalUrl: news.newsIconExternalUrl ?? "",
+        newsBannerStorageId: news.newsBannerStorageId ?? "",
+        newsBannerExternalUrl: news.newsBannerExternalUrl ?? "",
       };
       reset(formValues);
 
@@ -151,15 +155,15 @@ const NewsModal: React.FC<NewsModalProps> = ({
         { newsId: news.newsId, ...payload },
         {
           onSuccess: (response: { message?: string }) => {
-            showSuccess(response.message || "News updated successfully");
+            showSuccess(response.message ?? "News updated successfully");
             onSave();
             handleCloseModal();
           },
           onError: (error) => {
             const errorMessage =
               (error.response?.data as { errorMessage?: string })
-                ?.errorMessage ||
-              error.message ||
+                ?.errorMessage ??
+              error.message ??
               "Failed to update Poem";
             showError(errorMessage);
           },
@@ -169,14 +173,14 @@ const NewsModal: React.FC<NewsModalProps> = ({
       // Add new news
       addNews(payload, {
         onSuccess: (response: { message?: string }) => {
-          showSuccess(response.message || "News created successfully");
+          showSuccess(response.message ?? "News created successfully");
           onSave();
           handleCloseModal();
         },
         onError: (error) => {
           const errorMessage =
-            (error.response?.data as { errorMessage?: string })?.errorMessage ||
-            error.message ||
+            (error.response?.data as { errorMessage?: string })?.errorMessage ??
+            error.message ??
             "Failed to add Poem";
           showError(errorMessage);
         },
@@ -203,7 +207,7 @@ const NewsModal: React.FC<NewsModalProps> = ({
       {
         onSuccess: (res) => {
           const options = res?.data?.settingValue ?? [];
-          setTag(options);
+          setTags(options);
         },
         onError: (err) => {
           console.error("Failed to fetch  Shorts Tags:", err);
@@ -211,6 +215,16 @@ const NewsModal: React.FC<NewsModalProps> = ({
       },
     );
   }, []);
+
+  let buttonLabel: React.ReactNode;
+
+  if (isAddNewsPending || isEditNewsPending) {
+    buttonLabel = <CircularProgress size={24} color="inherit" />;
+  } else if (news) {
+    buttonLabel = "Update";
+  } else {
+    buttonLabel = "Create";
+  }
   return (
     <>
       {/* Discard Changes Confirmation Modal */}
@@ -349,8 +363,8 @@ const NewsModal: React.FC<NewsModalProps> = ({
                         width={150}
                         height={150}
                         initialPreviewUrl={
-                          news?.newsIconStorageUrl ||
-                          news?.newsIconExternalUrl ||
+                          news?.newsIconStorageUrl ??
+                          news?.newsIconExternalUrl ??
                           ""
                         }
                       />
@@ -426,8 +440,8 @@ const NewsModal: React.FC<NewsModalProps> = ({
                         width={1024}
                         height={500}
                         initialPreviewUrl={
-                          news?.newsBannerStorageUrl ||
-                          news?.newsBannerExternalUrl ||
+                          news?.newsBannerStorageUrl ??
+                          news?.newsBannerExternalUrl ??
                           ""
                         }
                       />
@@ -476,7 +490,12 @@ const NewsModal: React.FC<NewsModalProps> = ({
                           <Chip
                             label={option}
                             {...getTagProps({ index })}
-                            sx={{ mr: 0.5 }}
+                            sx={{
+                              mr: 0.5,
+                              backgroundColor:
+                                theme.palette.badge?.activeUserText,
+                              color: theme.palette.primary.contrastText,
+                            }}
                             key={index}
                           />
                         ))
@@ -526,13 +545,7 @@ const NewsModal: React.FC<NewsModalProps> = ({
                 color="success"
                 disabled={isAddNewsPending || isEditNewsPending}
               >
-                {isAddNewsPending || isEditNewsPending ? (
-                  <CircularProgress size={24} color="inherit" />
-                ) : news ? (
-                  "Update"
-                ) : (
-                  "Create"
-                )}
+                {buttonLabel}
               </Button>
             </Box>
           </Box>

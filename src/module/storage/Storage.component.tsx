@@ -91,13 +91,13 @@ const Storage = () => {
           refetch();
           refetchLastSync();
           setSnackbarMessage(
-            response.message || "Storage synchronized successfully",
+            response.message ?? "Storage synchronized successfully",
           );
           setSnackbarSeverity(SNACKBAR_SEVERITY.SUCCESS);
           setOpenSnackbar(true);
         },
         onError: (err: Error) => {
-          setSnackbarMessage(err.message || "Synchronization failed");
+          setSnackbarMessage(err.message ?? "Synchronization failed");
           setSnackbarSeverity(SNACKBAR_SEVERITY.ERROR);
           setOpenSnackbar(true);
         },
@@ -114,8 +114,8 @@ const Storage = () => {
       deleteStorageFiles(
         { storageName: deleteConfirmation.storageName },
         {
-          onSuccess: async () => {
-            await refetch();
+          onSuccess: () => {
+            refetch();
             setDeleteConfirmation({ open: false, storageName: null });
             setSnackbarMessage("File deleted successfully.");
             setSnackbarSeverity(SNACKBAR_SEVERITY.SUCCESS);
@@ -257,6 +257,31 @@ const Storage = () => {
     setPaginationModel((prev) => ({ ...prev, page: 0 }));
   }, [searchTerm, sortModel]);
 
+  let syncStatusContent;
+  if (isSyncStoragePending) {
+    syncStatusContent = "Sync in progress...";
+  } else if (lastSyncTime) {
+    const formattedTime = new Date(lastSyncTime).toLocaleString([], {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: true,
+    });
+
+    syncStatusContent = (
+      <Tooltip
+        title={`Last synced: ${new Date(lastSyncTime).toLocaleString()}`}
+      >
+        <span>Last Synced: {formattedTime}</span>
+      </Tooltip>
+    );
+  } else {
+    syncStatusContent = null;
+  }
+
   const syncButton = (
     <div className="flex justify-center items-center">
       <Button
@@ -280,26 +305,7 @@ const Storage = () => {
               color: theme.palette.badge?.success,
             }}
           >
-            {isSyncStoragePending ? (
-              "Sync in progress..."
-            ) : lastSyncTime ? (
-              <Tooltip
-                title={`Last synced: ${new Date(lastSyncTime).toLocaleString()}`}
-              >
-                <span>
-                  Last Synced:{" "}
-                  {new Date(lastSyncTime).toLocaleString([], {
-                    year: "numeric",
-                    month: "2-digit",
-                    day: "2-digit",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                    second: "2-digit",
-                    hour12: true,
-                  })}
-                </span>
-              </Tooltip>
-            ) : null}
+            {syncStatusContent}
           </Typography>
         </Tooltip>
       )}
@@ -352,6 +358,7 @@ const Storage = () => {
           {previewModal.type === "audio" && previewModal.src && (
             <audio controls autoPlay style={{ width: 300 }}>
               <source src={previewModal.src} />
+              <track default kind="captions" srcLang="en" src="" />
               Your browser does not support the audio element.
             </audio>
           )}
@@ -362,6 +369,7 @@ const Storage = () => {
               style={{ width: "100%", maxHeight: 400, marginTop: 10 }}
             >
               <source src={previewModal.src} />
+              <track default kind="captions" srcLang="en" src="" />
               Your browser does not support the video tag.
             </video>
           )}

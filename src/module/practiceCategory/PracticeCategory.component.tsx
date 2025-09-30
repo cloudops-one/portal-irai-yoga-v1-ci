@@ -45,10 +45,13 @@ import FullHeightDataGridContainer from "../../component/DataGridContainerHeight
 import ConfirmDelete from "../../component/ConfirmDelete.dialog";
 import { ProfilePictureUpload } from "../../component/ProfilePictureUpload";
 import { CustomModal } from "../../component/Modal";
-import { SNACKBAR_SEVERITY, SnackbarSeverity } from "../../common/App.const";
+import {
+  SNACKBAR_SEVERITY,
+  SnackbarSeverity,
+  FALLBACK_LOGO,
+} from "../../common/App.const";
 import SnackBar from "../../component/SnackBar";
 import { yupResolver } from "@hookform/resolvers/yup";
-import { FALLBACK_LOGO } from "../../common/App.const";
 import theme from "../../common/App.theme";
 import { usePracticeCategoryStatus } from "../../common/App.hooks";
 
@@ -338,21 +341,20 @@ const PracticeCategory = () => {
               refetch();
               handleCloseModal();
               showSuccess(
-                response.message || "Practice category updated successfully",
+                response.message ?? "Practice category updated successfully",
               );
             },
             onError: (error) => {
               const errorMessage =
                 (error.response?.data as { errorMessage?: string })
-                  ?.errorMessage ||
-                error.message ||
+                  ?.errorMessage ??
+                error.message ??
                 "Failed to update category";
               showError(errorMessage);
             },
           },
         );
       } else {
-        // Create new category
         addCategory(payload, {
           onSuccess: () => {
             refetch();
@@ -362,8 +364,8 @@ const PracticeCategory = () => {
           onError: (error) => {
             const errorMessage =
               (error.response?.data as { errorMessage?: string })
-                ?.errorMessage ||
-              error.message ||
+                ?.errorMessage ??
+              error.message ??
               "Failed to create category";
             showError(errorMessage);
           },
@@ -385,6 +387,16 @@ const PracticeCategory = () => {
     ...r,
     id: r?.practiceCategoryId,
   }));
+
+  let buttonContent: React.ReactNode;
+
+  if (isAddCategoryPending || isEditCategoryPending) {
+    buttonContent = <CircularProgress size={24} />;
+  } else if (watch("practiceCategoryId")) {
+    buttonContent = "Update";
+  } else {
+    buttonContent = "Save";
+  }
 
   return (
     <>
@@ -581,13 +593,7 @@ const PracticeCategory = () => {
                 variant="contained"
                 disabled={isAddCategoryPending || isEditCategoryPending}
               >
-                {isAddCategoryPending || isEditCategoryPending ? (
-                  <CircularProgress size={24} />
-                ) : watch("practiceCategoryId") ? (
-                  "Update"
-                ) : (
-                  "Save"
-                )}
+                {buttonContent}
               </Button>
             </Box>
           </form>

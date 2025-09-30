@@ -42,7 +42,7 @@ import {
 import { ProfilePictureUpload } from "../../component/ProfilePictureUpload";
 import { TiptapEditor } from "../../component/TipTapTextEditor";
 import OrganizationDropdown from "../organization/OrganizationDropdown.component";
-import { hmsToMs, msToHms } from "../../component/Duration";
+import { DurationInput } from "../../component/Duration";
 import { CustomModal } from "../../component/Modal";
 import { yupResolver } from "@hookform/resolvers/yup";
 import {
@@ -230,7 +230,7 @@ const ProgramModal: React.FC<ProgramModalProps> = ({
         "programBannerExternalUrl",
         program.programBannerExternalUrl ?? "",
       );
-      setProgramValue("tags", program.tags || []);
+      setProgramValue("tags", program.tags ?? []);
       setProgramId(program.programId ?? "");
 
       // Load sections for the program
@@ -283,7 +283,7 @@ const ProgramModal: React.FC<ProgramModalProps> = ({
           onSuccess: (response) => {
             const updatedProgram = response.data;
             onSave(updatedProgram);
-            showSuccess(response.message || "Program updated successfully");
+            showSuccess(response.message ?? "Program updated successfully");
           },
         },
       );
@@ -294,7 +294,7 @@ const ProgramModal: React.FC<ProgramModalProps> = ({
           const newProgram = response.data;
           setProgramId(newProgram.programId);
           onSave(newProgram);
-          showSuccess(response.message || "Program created successfully");
+          showSuccess(response.message ?? "Program created successfully");
         },
       });
     }
@@ -320,7 +320,7 @@ const ProgramModal: React.FC<ProgramModalProps> = ({
             resetSection();
             setShowSectionForm(false);
             setEditingSection(null);
-            showSuccess(response.message || "Section updated successfully");
+            showSuccess(response.message ?? "Section updated successfully");
           },
         },
       );
@@ -344,7 +344,7 @@ const ProgramModal: React.FC<ProgramModalProps> = ({
           );
           resetSection();
           setShowSectionForm(false);
-          showSuccess(response.message || "Section created successfully");
+          showSuccess(response.message ?? "Section created successfully");
         },
       });
     }
@@ -359,9 +359,9 @@ const ProgramModal: React.FC<ProgramModalProps> = ({
     const lessonPayload = {
       sectionId: selectedSectionId,
       lessonName: data.lessonName,
-      lessonDescription: data.lessonDescription || "",
-      lessonText: data.lessonText || "",
-      duration: data.duration || 0,
+      lessonDescription: data.lessonDescription ?? "",
+      lessonText: data.lessonText ?? "",
+      duration: data.duration ?? 0,
       ...(data.lessonStorageId
         ? { lessonStorageId: data.lessonStorageId }
         : undefined),
@@ -389,7 +389,7 @@ const ProgramModal: React.FC<ProgramModalProps> = ({
         );
         resetLesson(initialLessonFormState);
         setShowLessonForm(false);
-        showSuccess(response.message || "Lesson added successfully");
+        showSuccess(response.message ?? "Lesson added successfully");
       },
       onError: (error) => {
         const errorMessage = get(
@@ -410,9 +410,9 @@ const ProgramModal: React.FC<ProgramModalProps> = ({
     const lessonPayload = {
       sectionId: selectedSectionId,
       lessonName: data.lessonName,
-      lessonDescription: data.lessonDescription || "",
-      lessonText: data.lessonText || "",
-      duration: data.duration || 0,
+      lessonDescription: data.lessonDescription ?? "",
+      lessonText: data.lessonText ?? "",
+      duration: data.duration ?? 0,
       ...(data.lessonStorageId
         ? { lessonStorageId: data.lessonStorageId }
         : undefined),
@@ -432,7 +432,7 @@ const ProgramModal: React.FC<ProgramModalProps> = ({
             { sectionId: selectedSectionId },
             {
               onSuccess: (response) => {
-                setLessons(response.data); // fresh data
+                setLessons(response.data);
               },
               onError: (error) => {
                 const errorMessage = get(
@@ -447,7 +447,7 @@ const ProgramModal: React.FC<ProgramModalProps> = ({
           resetLesson();
           setShowLessonForm(false);
           setEditingLesson(null);
-          showSuccess(response.message || "Lesson updated successfully");
+          showSuccess(response.message ?? "Lesson updated successfully");
         },
         onError: (error) => {
           const errorMessage = get(
@@ -494,21 +494,14 @@ const ProgramModal: React.FC<ProgramModalProps> = ({
           setLessonValue("lessonName", lesson.lessonName);
           setLessonValue("lessonDescription", lesson.lessonDescription);
           setLessonValue("lessonText", lesson.lessonText);
-          setLessonValue(
-            "lessonStorageId",
-            lesson.lessonStorageId ? lesson.lessonStorageId : "",
-          );
-          setLessonValue(
-            "lessonExternalUrl",
-            lesson.lessonExternalUrl ? lesson.lessonExternalUrl : "",
-          );
-          setLessonValue("duration", lesson.duration || 0);
+          setLessonValue("lessonStorageId", lesson.lessonStorageId ?? "");
+          setLessonValue("lessonExternalUrl", lesson.lessonExternalUrl ?? "");
+          setLessonValue("duration", lesson.duration ?? 0);
           setSelectedSectionId(lesson.sectionId);
           setExpandedSection(lesson.sectionId);
           const inputType = lesson.lessonExternalUrl ? "url" : "file";
           setLessonInputType(inputType);
 
-          // Force reset the radio group state
           if (inputType === "url") {
             setLessonValue("lessonStorageId", "");
           } else {
@@ -536,7 +529,6 @@ const ProgramModal: React.FC<ProgramModalProps> = ({
             setLessons(response.data);
           },
           onError: () => {
-            // Handle error if needed
             console.error("Failed to fetch lessons for section");
           },
         },
@@ -552,21 +544,21 @@ const ProgramModal: React.FC<ProgramModalProps> = ({
         { sectionId: deleteConfirmation.id },
         {
           onSuccess: (response: { message?: string }) => {
-            showSuccess(response.message || "Section deleted successfully");
+            showSuccess(response.message ?? "Section deleted successfully");
             getSections(
-              { programId: program?.programId || "" },
+              { programId: program?.programId ?? "" },
               {
                 onSuccess: (response) => {
                   setSections(response.data);
                   showSuccess(
-                    response.message || "Section deleted successfully",
+                    response.message ?? "Section deleted successfully",
                   );
                 },
                 onError: (error) => {
                   const errorMessage =
                     (error.response?.data as { errorMessage?: string })
-                      ?.errorMessage ||
-                    error.message ||
+                      ?.errorMessage ??
+                    error.message ??
                     "Failed to get section";
                   showError(errorMessage);
                 },
@@ -578,10 +570,10 @@ const ProgramModal: React.FC<ProgramModalProps> = ({
           onError: (error) => {
             const errorMessage =
               (error.response?.data as { errorMessage?: string })
-                ?.errorMessage ||
-              error.message ||
+                ?.errorMessage ??
+              error.message ??
               "Failed to delete section";
-            showError(errorMessage || "Failed to delete section");
+            showError(errorMessage ?? "Failed to delete section");
             setDeleteConfirmation({ open: false, id: null, type: null });
           },
         },
@@ -602,8 +594,8 @@ const ProgramModal: React.FC<ProgramModalProps> = ({
                   onError: (error) => {
                     const errorMessage =
                       (error.response?.data as { errorMessage?: string })
-                        ?.errorMessage ||
-                      error.message ||
+                        ?.errorMessage ??
+                      error.message ??
                       "Failed to get Lessons";
                     showError(errorMessage);
                   },
@@ -615,10 +607,10 @@ const ProgramModal: React.FC<ProgramModalProps> = ({
           onError: (error) => {
             const errorMessage =
               (error.response?.data as { errorMessage?: string })
-                ?.errorMessage ||
-              error.message ||
+                ?.errorMessage ??
+              error.message ??
               "Failed to delete lesson";
-            showError(errorMessage || "Failed to delete lesson");
+            showError(errorMessage ?? "Failed to delete lesson");
             setDeleteConfirmation({ open: false, id: null, type: null });
           },
         },
@@ -658,6 +650,37 @@ const ProgramModal: React.FC<ProgramModalProps> = ({
       </Box>
     </CustomModal>
   );
+
+  let programButtonContent;
+
+  if (isAddProgramPending || isEditProgramPending) {
+    programButtonContent = <CircularProgress size={24} />;
+  } else if (program) {
+    programButtonContent = "Update Program";
+  } else {
+    programButtonContent = "Save Program";
+  }
+
+  let sectionButtonContent;
+
+  if (isAddSectionPending || isEditSectionPending) {
+    sectionButtonContent = <CircularProgress size={24} />;
+  } else if (editingSection) {
+    sectionButtonContent = "Update Section";
+  } else {
+    sectionButtonContent = "Save Section";
+  }
+
+  let lessonButtonContent;
+
+  if (isAddLessonPending || isEditLessonPending) {
+    lessonButtonContent = <CircularProgress size={24} />;
+  } else if (editingLesson) {
+    lessonButtonContent = "Update Lesson";
+  } else {
+    lessonButtonContent = "Save Lesson";
+  }
+
   return (
     <>
       {renderDiscardConfirm()}
@@ -837,13 +860,7 @@ const ProgramModal: React.FC<ProgramModalProps> = ({
                   color="primary"
                   disabled={isAddProgramPending || isEditProgramPending}
                 >
-                  {isAddProgramPending || isEditProgramPending ? (
-                    <CircularProgress size={24} />
-                  ) : program ? (
-                    "Update Program"
-                  ) : (
-                    "Save Program"
-                  )}{" "}
+                  {programButtonContent}{" "}
                 </Button>
               </Box>
             </Box>
@@ -1108,7 +1125,7 @@ const ProgramModal: React.FC<ProgramModalProps> = ({
                                 render={({ field }) => (
                                   <TextField
                                     {...field}
-                                    value={field.value || ""}
+                                    value={field.value ?? ""}
                                     label="External URL"
                                     fullWidth
                                     size="small"
@@ -1132,22 +1149,17 @@ const ProgramModal: React.FC<ProgramModalProps> = ({
                               control={lessonControl}
                               defaultValue={0}
                               render={({ field }) => (
-                                <TextField
-                                  {...field}
-                                  label="Duration (HH:MM:SS)"
-                                  value={msToHms(field.value)}
-                                  onChange={(e) => {
-                                    const ms = hmsToMs(e.target.value);
-                                    field.onChange(ms);
-                                  }}
-                                  fullWidth
-                                  size="small"
-                                  margin="normal"
-                                  placeholder="HH:MM:SS"
-                                  inputProps={{
-                                    pattern: "[0-9]{2}:[0-9]{2}:[0-9]{2}",
-                                  }}
-                                />
+                                <Box>
+                                  <DurationInput
+                                    value={field.value}
+                                    onChange={field.onChange}
+                                  />
+                                  {lessonErrors.duration && (
+                                    <Typography color="error" variant="body2">
+                                      {lessonErrors.duration.message}
+                                    </Typography>
+                                  )}
+                                </Box>
                               )}
                             />
                           </Box>
@@ -1157,13 +1169,7 @@ const ProgramModal: React.FC<ProgramModalProps> = ({
                             variant="contained"
                             disabled={isAddLessonPending || isEditLessonPending}
                           >
-                            {isAddLessonPending || isEditLessonPending ? (
-                              <CircularProgress size={24} />
-                            ) : editingLesson ? (
-                              "Update Lesson"
-                            ) : (
-                              "Save Lesson"
-                            )}
+                            {lessonButtonContent}
                           </Button>
 
                           <Button
@@ -1214,8 +1220,10 @@ const ProgramModal: React.FC<ProgramModalProps> = ({
                         sx={{ mb: 2 }}
                         error={!!sectionErrors.sectionName}
                         helperText={sectionErrors.sectionName?.message}
-                        InputLabelProps={{
-                          shrink: !!field.value, // This makes the label shrink when there's a value
+                        slotProps={{
+                          inputLabel: {
+                            shrink: !!field.value,
+                          },
                         }}
                       />
                     )}
@@ -1243,13 +1251,7 @@ const ProgramModal: React.FC<ProgramModalProps> = ({
                     variant="contained"
                     disabled={isAddSectionPending || isEditSectionPending}
                   >
-                    {isAddSectionPending || isEditSectionPending ? (
-                      <CircularProgress size={24} />
-                    ) : editingSection ? (
-                      "Update Section"
-                    ) : (
-                      "Save Section"
-                    )}
+                    {sectionButtonContent}
                   </Button>
 
                   <Button

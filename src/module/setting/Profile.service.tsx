@@ -2,16 +2,6 @@ import { useMutationApi } from "../../common/App.service";
 import { API_URLS, API_METHODS } from "../../common/App.const";
 import { UserType } from "../user/User.type";
 
-// export const useGetUserDetails = () => {
-//   const { mutate: getUserData, isPending: isGetUserDetailsPending } =
-//     useMutationApi({
-//       url: API_URLS?.USER,
-//       method: API_METHODS.GET,
-//     });
-
-//   return { getUserData, isGetUserDetailsPending };
-// };
-
 export const useGetUserDetails = () => {
   const { mutate: getUserData, isPending: isGetUserDetailsPending } =
     useMutationApi({

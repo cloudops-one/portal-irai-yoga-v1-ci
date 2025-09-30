@@ -1,4 +1,5 @@
 export interface AddressType {
+  id: number;
   addressLine1: string;
   addressLine2?: string;
   city: string;
@@ -51,6 +52,7 @@ export const formDataInitialState: UserType = {
   orgId: "",
   addresses: [
     {
+      id: 0,
       addressLine1: "",
       addressLine2: "",
       city: "",

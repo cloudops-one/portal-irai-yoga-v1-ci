@@ -53,8 +53,8 @@ export const UserViewModal = ({
         </Typography>
 
         {userAoi && userAoi.length > 0 ? (
-          userAoi.map((aoi, index) => (
-            <Accordion key={index} defaultExpanded>
+          userAoi.map((aoi) => (
+            <Accordion key={aoi.questionId} defaultExpanded>
               <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                 <Typography fontWeight="bold">{aoi.questionName}</Typography>
               </AccordionSummary>
@@ -73,8 +73,8 @@ export const UserViewModal = ({
                   <ul style={{ marginTop: 0, paddingLeft: 20 }}>
                     {aoi.options
                       .filter((option) => option.selected)
-                      .map((option, optIndex) => (
-                        <li key={optIndex}>
+                      .map((option) => (
+                        <li key={option.id}>
                           <Typography variant="body2">
                             {option.value}
                           </Typography>

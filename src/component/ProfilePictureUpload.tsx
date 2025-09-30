@@ -7,13 +7,12 @@ interface ProfilePictureUploadProps {
   onUploadSuccess: (fileId: string | null, duartionMs?: number) => void;
   moduleType: string;
   initialPreviewUrl?: string;
-  existingFileId?: string;
   disabled?: boolean;
   viewMode?: boolean;
-  onClear?: () => void;
   fallbackImageUrl?: string;
   width?: number | string;
   height?: number | string;
+  existingFileId?: string;
 }
 
 interface FileUploadResponse {
@@ -175,7 +174,9 @@ export const ProfilePictureUpload: React.FC<ProfilePictureUploadProps> = ({
                 objectFit: "contain",
                 borderRadius: 8,
               }}
-            />
+            >
+              <track default kind="captions" srcLang="en" src="" />
+            </video>
           </Box>
         );
       case "audio":
@@ -189,6 +190,7 @@ export const ProfilePictureUpload: React.FC<ProfilePictureUploadProps> = ({
             }}
           >
             <audio controls style={{ width: "80%" }}>
+              <track default kind="captions" srcLang="en" src="" />
               <source
                 src={previewUrl}
                 type={`audio/${previewUrl.split(".").pop()?.split("?")[0]}`}

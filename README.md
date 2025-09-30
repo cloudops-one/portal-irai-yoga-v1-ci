@@ -1,13 +1,13 @@
 # 🧘‍♂ Irai Yoga 📊💻
- 
+
 Welcome to the *Irai Yoga*, a powerful web-based application built using **Vite**, **React**, and **TypeScript**.
 This portal allows administrators to efficiently manage and oversee the activities of the Irai Yoga Platform..
 
 ---
 
-## 🚀 Features..................
-.....
-- 🔥 Responsive Admin Dashboard...
+## 🚀 Features
+
+- 🔥 Responsive Admin Dashboard
 - 🌐 Zustand State Management
 - 🔁 API Integration with Axios
 - 🔥 Retry Mechanism for API Failures
@@ -15,9 +15,9 @@ This portal allows administrators to efficiently manage and oversee the activiti
 - ✅ Unit Tests with Jest
 - 🔒 Type Safety with TypeScript
 
------
+---
 
-## 🔧 Installation & Setup..
+## 🔧 Installation & Setup
 
 Follow the steps below to run the project locally on your machine:
 

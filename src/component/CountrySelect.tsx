@@ -1,4 +1,3 @@
-// /component/CountrySelect.tsx
 import React from "react";
 import Box from "@mui/material/Box";
 import TextField, { TextFieldProps } from "@mui/material/TextField";
@@ -41,7 +40,7 @@ export default function CountrySelect({
   onChange,
   textFieldProps,
   disabled,
-}: CountrySelectProps) {
+}: Readonly<CountrySelectProps>) {
   const { countries, loading } = useCountryCurrencySettings();
   if (loading) return <CircularProgress size={24} />;
 
@@ -86,9 +85,7 @@ export default function CountrySelect({
             htmlInput: {
               ...params.inputProps,
               autoComplete: "new-password",
-              ...(textFieldProps?.slotProps?.htmlInput || {}),
-              "data-testid":
-                textFieldProps?.inputProps?.["data-testid"] || "country",
+              ...(textFieldProps?.slotProps?.htmlInput ?? {}),
             },
             ...textFieldProps?.slotProps,
           }}
@@ -104,7 +101,7 @@ export function CurrencySelect({
   error,
   helperText,
   disabled,
-}: CurrencySelectProps) {
+}: Readonly<CurrencySelectProps>) {
   const { currencies, loading } = useCountryCurrencySettings();
 
   if (loading) return <CircularProgress size={24} />;
@@ -127,10 +124,6 @@ export function CurrencySelect({
           size="small"
           error={error}
           helperText={helperText}
-          inputProps={{
-            ...params.inputProps,
-            "data-testid": "bankcurrency",
-          }}
         />
       )}
       slotProps={{

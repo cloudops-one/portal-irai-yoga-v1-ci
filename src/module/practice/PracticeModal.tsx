@@ -163,69 +163,86 @@ const PracticeModal: React.FC<PracticeModalPropsType> = ({
     }
   };
 
-  useEffect(() => {
-    if (open && isEdit && practiceDetail) {
-      let tagsData: string[] = [];
-      const tagValue = practiceDetail.tags as string | string[] | undefined;
-      if (tagValue) {
-        if (Array.isArray(tagValue)) {
-          tagsData = tagValue;
-        } else if (typeof tagValue === "string") {
-          tagsData = tagValue.split(",").filter(Boolean);
-        }
-      }
+  const getTagsArray = (tagValue: string | string[] | undefined): string[] => {
+    if (!tagValue) return [];
+    if (Array.isArray(tagValue)) return tagValue;
+    if (typeof tagValue === "string")
+      return tagValue.split(",").filter(Boolean);
+    return [];
+  };
 
-      reset({
-        practiceName: practiceDetail?.practiceName || "",
-        practiceDescription: practiceDetail?.practiceDescription || "",
-        practiceCategoryId: practiceDetail.practiceCategoryId || "",
-        tags: tagsData,
-        orgId: practiceDetail.orgId || "",
-        practiceIconStorageUrl: practiceDetail.practiceIconStorageUrl || "",
-        practiceIconStorageId: practiceDetail.practiceIconStorageId || "",
-        practiceIconExternalUrl: practiceDetail.practiceIconExternalUrl || "",
-        practiceBannerStorageUrl: practiceDetail.practiceBannerStorageUrl || "",
-        practiceBannerStorageId: practiceDetail.practiceBannerStorageId || "",
-        practiceBannerExternalUrl:
-          practiceDetail.practiceBannerExternalUrl || "",
-        practiceStorageUrl: practiceDetail.practiceStorageUrl || "",
-        practiceStorageId: practiceDetail.practiceStorageId || "",
-        practiceExternalUrl: practiceDetail.practiceExternalUrl || "",
-      });
-      setTag(tagsData);
-      if (practiceDetail.practiceIconExternalUrl)
-        setIconInputType(
-          practiceDetail.practiceIconExternalUrl ? "url" : "file",
-        );
-      if (practiceDetail.practiceBannerExternalUrl)
-        setBannerInputType(
-          practiceDetail.practiceBannerExternalUrl ? "url" : "file",
-        );
-      if (practiceDetail.practiceExternalUrl)
-        setPracticeFileInputType(
-          practiceDetail.practiceExternalUrl ? "url" : "file",
-        );
-    } else if (open && !isEdit) {
-      reset({
-        practiceName: "",
-        practiceDescription: "",
-        practiceCategoryId: "",
-        tags: [],
-        orgId: "",
-        practiceIconStorageUrl: "",
-        practiceIconStorageId: "",
-        practiceIconExternalUrl: "",
-        practiceBannerStorageUrl: "",
-        practiceBannerStorageId: "",
-        practiceStorageUrl: "",
-        practiceStorageId: "",
-      });
-      setTag([]);
-      setIconInputType("file");
-      setBannerInputType("file");
-      setPracticeFileInputType("file");
+  const resetForEdit = (practiceDetail: PracticeFormData) => {
+    const tagsData = getTagsArray(practiceDetail.tags);
+    reset({
+      practiceName: practiceDetail?.practiceName ?? "",
+      practiceDescription: practiceDetail?.practiceDescription ?? "",
+      practiceCategoryId: practiceDetail.practiceCategoryId ?? "",
+      tags: tagsData,
+      orgId: practiceDetail.orgId ?? "",
+      practiceIconStorageUrl: practiceDetail.practiceIconStorageUrl ?? "",
+      practiceIconStorageId: practiceDetail.practiceIconStorageId ?? "",
+      practiceIconExternalUrl: practiceDetail.practiceIconExternalUrl ?? "",
+      practiceBannerStorageUrl: practiceDetail.practiceBannerStorageUrl ?? "",
+      practiceBannerStorageId: practiceDetail.practiceBannerStorageId ?? "",
+      practiceBannerExternalUrl: practiceDetail.practiceBannerExternalUrl ?? "",
+      practiceStorageUrl: practiceDetail.practiceStorageUrl ?? "",
+      practiceStorageId: practiceDetail.practiceStorageId ?? "",
+      practiceExternalUrl: practiceDetail.practiceExternalUrl ?? "",
+    });
+    setTag(tagsData);
+    setIconInputType(practiceDetail.practiceIconExternalUrl ? "url" : "file");
+    setBannerInputType(
+      practiceDetail.practiceBannerExternalUrl ? "url" : "file",
+    );
+    setPracticeFileInputType(
+      practiceDetail.practiceExternalUrl ? "url" : "file",
+    );
+  };
+
+  const resetForCreate = () => {
+    reset({
+      practiceName: "",
+      practiceDescription: "",
+      practiceCategoryId: "",
+      tags: [],
+      orgId: "",
+      practiceIconStorageUrl: "",
+      practiceIconStorageId: "",
+      practiceIconExternalUrl: "",
+      practiceBannerStorageUrl: "",
+      practiceBannerStorageId: "",
+      practiceStorageUrl: "",
+      practiceStorageId: "",
+    });
+    setTag([]);
+    setIconInputType("file");
+    setBannerInputType("file");
+    setPracticeFileInputType("file");
+  };
+
+  const resetForClosed = () => {
+    reset();
+    setTag([]);
+    setIconInputType("file");
+    setBannerInputType("file");
+    setPracticeFileInputType("file");
+  };
+
+  useEffect(() => {
+    if (!open) {
+      resetForClosed();
+      return;
+    }
+    if (isEdit && practiceDetail) {
+      resetForEdit(practiceDetail);
+      return;
+    }
+    if (!isEdit) {
+      resetForCreate();
     }
   }, [open, practiceDetail, isEdit, reset]);
+
+  // ...existing code...
 
   const handleAddPractice = async (payload: Record<string, unknown>) => {
     try {
@@ -258,7 +275,7 @@ const PracticeModal: React.FC<PracticeModalPropsType> = ({
     if (!practiceData) return;
 
     try {
-      await editPractice(
+      editPractice(
         { practiceId: practiceData.practiceId, ...payload },
         {
           onSuccess: () => {
@@ -292,31 +309,31 @@ const PracticeModal: React.FC<PracticeModalPropsType> = ({
       practiceName: data.practiceName,
       practiceDescription: data.practiceDescription,
       practiceCategoryId: data.practiceCategoryId,
-      orgId: data.orgId || null,
-      tags: data.tags || null,
+      orgId: data.orgId ?? null,
+      tags: data.tags ?? null,
       practiceIconStorageId:
         iconInputType === "file"
-          ? data.practiceIconStorageId || undefined
+          ? (data.practiceIconStorageId ?? undefined)
           : undefined,
       practiceIconExternalUrl:
         iconInputType === "url"
-          ? data.practiceIconExternalUrl || undefined
+          ? (data.practiceIconExternalUrl ?? undefined)
           : undefined,
       practiceBannerStorageId:
         bannerInputType === "file"
-          ? data.practiceBannerStorageId || undefined
+          ? (data.practiceBannerStorageId ?? undefined)
           : undefined,
       practiceBannerExternalUrl:
         bannerInputType === "url"
-          ? data.practiceBannerExternalUrl || undefined
+          ? (data.practiceBannerExternalUrl ?? undefined)
           : undefined,
       practiceStorageId:
         practiceFileInputType === "file"
-          ? data.practiceStorageId || undefined
+          ? (data.practiceStorageId ?? undefined)
           : undefined,
       practiceExternalUrl:
         practiceFileInputType === "url"
-          ? data.practiceExternalUrl || undefined
+          ? (data.practiceExternalUrl ?? undefined)
           : undefined,
     };
 
@@ -345,6 +362,16 @@ const PracticeModal: React.FC<PracticeModalPropsType> = ({
       },
     );
   }, []);
+
+  let submitButtonContent;
+
+  if (isAddPracticePending || isEditPracticePending) {
+    submitButtonContent = <CircularProgress size={24} />;
+  } else if (isEdit) {
+    submitButtonContent = "Update";
+  } else {
+    submitButtonContent = "Create";
+  }
   return (
     <>
       {showDiscardConfirm && (
@@ -446,7 +473,7 @@ const PracticeModal: React.FC<PracticeModalPropsType> = ({
                       (Array.isArray(categories) ? categories : []).find(
                         (c: CategoryOption) =>
                           c.practiceCategoryId === field.value,
-                      ) || null
+                      ) ?? null
                     }
                     onOpen={() => refetchCategories()}
                     onFocus={() => refetchCategories()}
@@ -464,16 +491,18 @@ const PracticeModal: React.FC<PracticeModalPropsType> = ({
                         size="small"
                         error={!!errors.practiceCategoryId}
                         helperText={errors.practiceCategoryId?.message}
-                        InputProps={{
-                          ...params.InputProps,
-                          endAdornment: (
-                            <>
-                              {isCategoriesPending ? (
-                                <CircularProgress size={20} />
-                              ) : null}
-                              {params.InputProps.endAdornment}
-                            </>
-                          ),
+                        slotProps={{
+                          input: {
+                            ...params.InputProps,
+                            endAdornment: (
+                              <>
+                                {isCategoriesPending && (
+                                  <CircularProgress size={20} />
+                                )}
+                                {params.InputProps.endAdornment}
+                              </>
+                            ),
+                          },
                         }}
                       />
                     )}
@@ -542,12 +571,12 @@ const PracticeModal: React.FC<PracticeModalPropsType> = ({
                           }}
                           moduleType="PRACTICE"
                           initialPreviewUrl={
-                            practiceData?.practiceIconStorageUrl ||
-                            practiceData?.practiceIconExternalUrl ||
+                            practiceData?.practiceIconStorageUrl ??
+                            practiceData?.practiceIconExternalUrl ??
                             ""
                           }
                           existingFileId={
-                            practiceDetail?.practiceIconStorageId || ""
+                            practiceDetail?.practiceIconStorageId ?? ""
                           }
                           fallbackImageUrl={FALLBACK_LOGO}
                           width={150}
@@ -568,7 +597,7 @@ const PracticeModal: React.FC<PracticeModalPropsType> = ({
                     render={({ field }) => (
                       <TextField
                         {...field}
-                        value={field.value || ""}
+                        value={field.value ?? ""}
                         label="Icon URL"
                         fullWidth
                         margin="normal"
@@ -622,12 +651,12 @@ const PracticeModal: React.FC<PracticeModalPropsType> = ({
                           }}
                           moduleType="PRACTICE"
                           initialPreviewUrl={
-                            practiceData?.practiceBannerStorageUrl ||
-                            practiceData?.practiceBannerExternalUrl ||
+                            practiceData?.practiceBannerStorageUrl ??
+                            practiceData?.practiceBannerExternalUrl ??
                             ""
                           }
                           existingFileId={
-                            practiceDetail?.practiceBannerStorageId || ""
+                            practiceDetail?.practiceBannerStorageId ?? ""
                           }
                           fallbackImageUrl={FALLBACK_BANNER}
                           width={1024}
@@ -648,7 +677,7 @@ const PracticeModal: React.FC<PracticeModalPropsType> = ({
                     render={({ field }) => (
                       <TextField
                         {...field}
-                        value={field.value || ""}
+                        value={field.value ?? ""}
                         label="Banner URL"
                         fullWidth
                         margin="normal"
@@ -702,12 +731,12 @@ const PracticeModal: React.FC<PracticeModalPropsType> = ({
                           }}
                           moduleType="PRACTICE"
                           initialPreviewUrl={
-                            practiceData?.practiceStorageUrl ||
-                            practiceData?.practiceExternalUrl ||
+                            practiceData?.practiceStorageUrl ??
+                            practiceData?.practiceExternalUrl ??
                             ""
                           }
                           existingFileId={
-                            practiceDetail?.practiceStorageId || ""
+                            practiceDetail?.practiceStorageId ?? ""
                           }
                         />
                         {errors.practiceStorageId && (
@@ -725,7 +754,7 @@ const PracticeModal: React.FC<PracticeModalPropsType> = ({
                     render={({ field }) => (
                       <TextField
                         {...field}
-                        value={field.value || ""}
+                        value={field.value ?? ""}
                         label="Practice File URL"
                         fullWidth
                         margin="normal"
@@ -797,13 +826,7 @@ const PracticeModal: React.FC<PracticeModalPropsType> = ({
                   disabled={isAddPracticePending || isEditPracticePending}
                   sx={{ ml: 2, display: "flex", justifyContent: "center" }}
                 >
-                  {isAddPracticePending || isEditPracticePending ? (
-                    <CircularProgress size={24} />
-                  ) : isEdit ? (
-                    "Update"
-                  ) : (
-                    "Create"
-                  )}
+                  {submitButtonContent}
                 </Button>
               </Box>
             </form>

@@ -19,7 +19,7 @@ const EventsCard: React.FC<EventsCardProps> = ({ events }) => {
       {events.map((event) => (
         <div
           key={event.eventId}
-          className="rounded-xl mt-1  bg-white shadow-lg  flex  justify-between items-center p-3 mb-4 w-full"
+          className="rounded-xl mt-1  bg-white shadow-xl  flex  justify-between items-center p-3 mb-4 w-full"
         >
           <div className="w-1/5">
             <img

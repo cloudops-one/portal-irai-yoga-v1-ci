@@ -18,6 +18,20 @@ export interface Event {
   }[];
 }
 
+export interface News {
+  newsId: string;
+  newsIconStorageUrl: string | null;
+  newsBannerStorageUrl: string | null;
+  newsName: string;
+  newsDescription: string | null;
+  isRecommended: boolean;
+  likes: number;
+  views: number;
+  tags: string[];
+  createdAt: string;
+}
+
+export type NewsResponse = ApiResponse<News[]>;
 // Generic API response type
 export interface ApiResponse<T> {
   message?: string;
@@ -58,6 +72,7 @@ export interface DashboardStats {
   totalPoems: number;
   totalShorts: number;
   topEvents: Event[];
+  topNews: News[];
 }
 
 export type ApiError = {
@@ -73,4 +88,5 @@ export type DashboardErrors = {
   practices?: ApiError;
   programs?: ApiError;
   shorts?: ApiError;
+  news?: ApiError;
 };

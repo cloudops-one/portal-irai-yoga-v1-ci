@@ -26,7 +26,6 @@ import {
   Checkbox,
   CardContent,
   Card,
-  Grid,
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import AddCircleIcon from "@mui/icons-material/AddCircle";
@@ -65,14 +64,19 @@ import CountrySelect, {
 import OrganizationDropdown from "../organization/OrganizationDropdown.component";
 import { ProfilePictureUpload } from "../../component/ProfilePictureUpload";
 import ConfirmDelete from "../../component/ConfirmDelete.dialog";
-import { SNACKBAR_SEVERITY, SnackbarSeverity } from "../../common/App.const";
+import {
+  SNACKBAR_SEVERITY,
+  SnackbarSeverity,
+  FALLBACK_PROFILE,
+} from "../../common/App.const";
 import SnackBar from "../../component/SnackBar";
 import { Visibility, VisibilityOff } from "@mui/icons-material";
 import dayjs from "dayjs";
 import { UseFormattedDateTime, useUserStatus } from "../../common/App.hooks";
 import BallotIcon from "@mui/icons-material/Ballot";
 import theme from "../../common/App.theme";
-import { FALLBACK_PROFILE } from "../../common/App.const";
+import Grid from "@mui/material/Grid2";
+
 export interface CountryOption {
   code: string;
   label: string;
@@ -226,8 +230,8 @@ const User = () => {
       deleteUser(
         { userId: deleteConfirmation.userId },
         {
-          onSuccess: async () => {
-            await refetch();
+          onSuccess: () => {
+            refetch();
             showSnackbar(
               "User deleted successfully",
               SNACKBAR_SEVERITY.SUCCESS,
@@ -237,8 +241,8 @@ const User = () => {
           onError: (error) => {
             const errorMessage =
               (error.response?.data as { errorMessage?: string })
-                ?.errorMessage ||
-              error.message ||
+                ?.errorMessage ??
+              error.message ??
               "Failed to delete event details";
             showSnackbar(errorMessage, SNACKBAR_SEVERITY.ERROR);
           },
@@ -280,8 +284,8 @@ const User = () => {
         },
         onError: (error) => {
           const errorMessage =
-            (error.response?.data as { errorMessage?: string })?.errorMessage ||
-            error.message ||
+            (error.response?.data as { errorMessage?: string })?.errorMessage ??
+            error.message ??
             "Failed to get event details";
           showSnackbar(errorMessage, SNACKBAR_SEVERITY.ERROR);
         },
@@ -301,8 +305,8 @@ const User = () => {
         },
         onError: (error) => {
           const errorMessage =
-            (error.response?.data as { errorMessage?: string })?.errorMessage ||
-            error.message ||
+            (error.response?.data as { errorMessage?: string })?.errorMessage ??
+            error.message ??
             "Failed to load AOI data";
           showSnackbar(errorMessage, SNACKBAR_SEVERITY.ERROR);
           setIsAoiLoading(false);
@@ -324,8 +328,8 @@ const User = () => {
         },
         onError: (error) => {
           const errorMessage =
-            (error.response?.data as { errorMessage?: string })?.errorMessage ||
-            error.message ||
+            (error.response?.data as { errorMessage?: string })?.errorMessage ??
+            error.message ??
             "Failed to add user";
           showSnackbar(errorMessage, SNACKBAR_SEVERITY.ERROR);
         },
@@ -346,8 +350,8 @@ const User = () => {
         },
         onError: (error) => {
           const errorMessage =
-            (error.response?.data as { errorMessage?: string })?.errorMessage ||
-            error.message ||
+            (error.response?.data as { errorMessage?: string })?.errorMessage ??
+            error.message ??
             "Failed to update user";
           showSnackbar(errorMessage, SNACKBAR_SEVERITY.ERROR);
         },
@@ -406,7 +410,7 @@ const User = () => {
 
               return (
                 <Box
-                  key={index}
+                  key={address.id}
                   mb={3}
                   p={2}
                   borderBottom="1px solid #ccc"
@@ -519,13 +523,13 @@ const User = () => {
                       control={control}
                       render={({ field }) => (
                         <CountrySelect
-                          value={selectedCountries[addressId] || null}
+                          value={selectedCountries[addressId] ?? null}
                           onChange={(_, newValue) => {
                             setSelectedCountries((prev) => ({
                               ...prev,
                               [addressId]: newValue,
                             }));
-                            field.onChange(newValue?.label || "");
+                            field.onChange(newValue?.label ?? "");
                           }}
                           disabled={viewMode}
                         />
@@ -593,6 +597,7 @@ const User = () => {
                       stateProvince: "",
                       postalCode: "",
                       country: "",
+                      id: 0,
                     },
                   ]);
                 }
@@ -748,8 +753,8 @@ const User = () => {
                 onError: (error) => {
                   const errorMessage =
                     (error.response?.data as { errorMessage?: string })
-                      ?.errorMessage ||
-                    error.message ||
+                      ?.errorMessage ??
+                    error.message ??
                     "Failed to update status";
                   showSnackbar(errorMessage, SNACKBAR_SEVERITY.ERROR);
                 },
@@ -779,6 +784,162 @@ const User = () => {
     isGetUserByAoiIdPending;
 
   const itemsWithId = currentItems?.map((r) => ({ ...r, id: r.userId }));
+  let headingText = "Add User";
+  if (viewMode) {
+    headingText = "View User";
+  } else if (editData) {
+    headingText = "Edit User";
+  }
+
+  // helper renderer inside your component
+  const renderAoiContent = () => {
+    if (isAoiLoading) {
+      return (
+        <Box
+          display="flex"
+          justifyContent="center"
+          alignItems="center"
+          minHeight={200}
+        >
+          <Loading />
+        </Box>
+      );
+    }
+
+    if (viewAoiData) {
+      return (
+        <Box sx={{ overflow: "auto", marginTop: "10px" }}>
+          <Grid container spacing={2}>
+            {/* Left column for questions */}
+            <Grid size={{ xs: 6 }}>
+              {viewAoiData.map((question, index) => {
+                const questionId = question.questionId || index;
+                const isExpanded = expandedQuestionId === questionId;
+
+                return (
+                  <Box
+                    key={questionId}
+                    onClick={() =>
+                      setExpandedQuestionId(isExpanded ? null : questionId)
+                    }
+                  >
+                    <Box
+                      mb={3}
+                      p={2}
+                      sx={{
+                        border: 1,
+                        borderRadius: 1,
+                        backgroundColor: isExpanded
+                          ? "#e1e1e1"
+                          : "background.paper",
+                        cursor: "pointer",
+                        "&:hover": { backgroundColor: "action.hover" },
+                        borderColor: "#d6d6d6",
+                      }}
+                    >
+                      <Typography>{question.questionName}</Typography>
+                    </Box>
+                  </Box>
+                );
+              })}
+            </Grid>
+
+            {/* Right column for options */}
+            <Grid size={{ xs: 6 }}>
+              {expandedQuestionId !== null && (
+                <Box
+                  sx={{
+                    position: "sticky",
+                    top: 0,
+                    height: "100%",
+                    p: 2,
+                    backgroundColor: "background.paper",
+                    border: 1,
+                    borderRadius: 1,
+                    borderColor: "#d6d6d6",
+                  }}
+                >
+                  {(() => {
+                    const question = viewAoiData.find(
+                      (q) =>
+                        (q.questionId || viewAoiData.indexOf(q)) ===
+                        expandedQuestionId,
+                    );
+                    if (!question) return null;
+
+                    return (
+                      <>
+                        <Typography variant="h3" sx={{ mb: 2 }}>
+                          Answer
+                        </Typography>
+
+                        {question.options?.length > 0 ? (
+                          <Box component="ul" sx={{ p: 0, m: 0 }}>
+                            {question.options.map((option) => (
+                              <Box
+                                component="li"
+                                key={option.id}
+                                sx={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: 1,
+                                  py: 1,
+                                }}
+                              >
+                                <Card
+                                  sx={{
+                                    width: "100%",
+                                    boxShadow: 6,
+                                    borderRadius: "6px",
+                                  }}
+                                >
+                                  <CardContent
+                                    sx={{
+                                      display: "flex",
+                                      flex: "row",
+                                      alignItems: "center",
+                                      p: "5px !important",
+                                      "&:last-child": {
+                                        pb: "5px !important",
+                                      },
+                                    }}
+                                  >
+                                    <Checkbox
+                                      checked={option.selected}
+                                      color="success"
+                                    />
+                                    <p>{option.value}</p>
+                                  </CardContent>
+                                </Card>
+                              </Box>
+                            ))}
+                          </Box>
+                        ) : (
+                          <Typography variant="body2" color="textSecondary">
+                            No options available for this question
+                          </Typography>
+                        )}
+                      </>
+                    );
+                  })()}
+                </Box>
+              )}
+            </Grid>
+          </Grid>
+        </Box>
+      );
+    }
+
+    return (
+      <Typography
+        variant="body1"
+        color="textSecondary"
+        sx={{ textAlign: "center", py: 4 }}
+      >
+        No areas of interest found
+      </Typography>
+    );
+  };
 
   return (
     <>
@@ -866,9 +1027,7 @@ const User = () => {
       <CustomModal
         open={open}
         handleClose={handleSafeClose}
-        headingText={
-          viewMode ? "View User" : editData ? "Edit User" : "Add User"
-        }
+        headingText={headingText}
       >
         <Box className="p-4 w-full max-h-[80vh] overflow-y-auto">
           <form onSubmit={handleSubmit(onSubmit)}>
@@ -983,23 +1142,25 @@ const User = () => {
                       type={showPasswords.password ? "text" : "password"}
                       error={!!errors.password}
                       helperText={errors.password?.message}
-                      InputProps={{
-                        endAdornment: (
-                          <InputAdornment position="end">
-                            <IconButton
-                              onClick={() =>
-                                togglePasswordVisibility("password")
-                              }
-                              edge="end"
-                            >
-                              {showPasswords.password ? (
-                                <VisibilityOff />
-                              ) : (
-                                <Visibility />
-                              )}
-                            </IconButton>
-                          </InputAdornment>
-                        ),
+                      slotProps={{
+                        input: {
+                          endAdornment: (
+                            <InputAdornment position="end">
+                              <IconButton
+                                onClick={() =>
+                                  togglePasswordVisibility("password")
+                                }
+                                edge="end"
+                              >
+                                {showPasswords.password ? (
+                                  <VisibilityOff />
+                                ) : (
+                                  <Visibility />
+                                )}
+                              </IconButton>
+                            </InputAdornment>
+                          ),
+                        },
                       }}
                     />
                   )}
@@ -1017,23 +1178,25 @@ const User = () => {
                       type={showPasswords.confirmPassword ? "text" : "password"}
                       error={!!errors.confirmPassword}
                       helperText={errors.confirmPassword?.message}
-                      InputProps={{
-                        endAdornment: (
-                          <InputAdornment position="end">
-                            <IconButton
-                              onClick={() =>
-                                togglePasswordVisibility("confirmPassword")
-                              }
-                              edge="end"
-                            >
-                              {showPasswords.confirmPassword ? (
-                                <VisibilityOff />
-                              ) : (
-                                <Visibility />
-                              )}
-                            </IconButton>
-                          </InputAdornment>
-                        ),
+                      slotProps={{
+                        input: {
+                          endAdornment: (
+                            <InputAdornment position="end">
+                              <IconButton
+                                onClick={() =>
+                                  togglePasswordVisibility("confirmPassword")
+                                }
+                                edge="end"
+                              >
+                                {showPasswords.confirmPassword ? (
+                                  <VisibilityOff />
+                                ) : (
+                                  <Visibility />
+                                )}
+                              </IconButton>
+                            </InputAdornment>
+                          ),
+                        },
                       }}
                     />
                   )}
@@ -1052,7 +1215,7 @@ const User = () => {
                       defaultCountry="IN"
                       value={field.value}
                       onChange={(value) => {
-                        field.onChange(value || "");
+                        field.onChange(value ?? "");
                       }}
                       withCountryCallingCode
                       countryCallingCodeEditable={false}
@@ -1088,7 +1251,7 @@ const User = () => {
                       field.onChange(fileId);
                     }}
                     moduleType="USERS"
-                    initialPreviewUrl={watch("userIconStorageUrl") || ""}
+                    initialPreviewUrl={watch("userIconStorageUrl") ?? ""}
                     disabled={viewMode}
                     viewMode={viewMode}
                     fallbackImageUrl={FALLBACK_PROFILE}
@@ -1175,164 +1338,7 @@ const User = () => {
         headingText="Area of Interest"
       >
         <Box className="p-4 w-full max-h-[80vh] overflow-y-auto">
-          {isAoiLoading ? (
-            <Box
-              display="flex"
-              justifyContent="center"
-              alignItems="center"
-              minHeight={200}
-            >
-              <Loading />
-            </Box>
-          ) : viewAoiData ? (
-            <Box sx={{ overflow: "auto", marginTop: "10px" }}>
-              <Grid container spacing={2}>
-                {/* Left column for questions */}
-                <Grid item xs={6}>
-                  {viewAoiData.map((question, index) => {
-                    const questionId = question.questionId || index;
-                    const isExpanded = expandedQuestionId === questionId;
-
-                    return (
-                      <Box
-                        key={questionId}
-                        onClick={() =>
-                          setExpandedQuestionId(isExpanded ? null : questionId)
-                        }
-                      >
-                        {isExpanded ? (
-                          <Box
-                            mb={3}
-                            p={2}
-                            sx={{
-                              border: 1,
-                              borderRadius: 1,
-                              backgroundColor: "#e1e1e1",
-                              cursor: "pointer",
-                              "&:hover": { backgroundColor: "action.hover" },
-                              borderColor: "#d6d6d6",
-                            }}
-                          >
-                            <Typography>{question.questionName}</Typography>
-                          </Box>
-                        ) : (
-                          <Box
-                            mb={3}
-                            p={2}
-                            sx={{
-                              border: 1,
-                              borderRadius: 1,
-                              backgroundColor: "background.paper",
-                              cursor: "pointer",
-                              "&:hover": { backgroundColor: "action.hover" },
-                              borderColor: "#d6d6d6",
-                            }}
-                          >
-                            <Typography>
-                              {question.questionName}
-                            </Typography>{" "}
-                          </Box>
-                        )}
-                      </Box>
-                    );
-                  })}
-                </Grid>
-
-                {/* Right column for options */}
-                <Grid item xs={6}>
-                  {expandedQuestionId !== null && (
-                    <Box
-                      sx={{
-                        position: "sticky",
-                        top: 0,
-                        height: "100%",
-                        p: 2,
-                        backgroundColor: "background.paper",
-                        border: 1,
-                        borderRadius: 1,
-                        borderColor: "#d6d6d6",
-                      }}
-                    >
-                      {(() => {
-                        const question = viewAoiData.find(
-                          (q) =>
-                            (q.questionId || viewAoiData.indexOf(q)) ===
-                            expandedQuestionId,
-                        );
-
-                        if (!question) return null;
-
-                        return (
-                          <>
-                            <Typography variant="h3" sx={{ mb: 2 }}>
-                              Answer
-                            </Typography>
-
-                            {question.options?.length > 0 ? (
-                              <Box component="ul" sx={{ p: 0, m: 0 }}>
-                                {question.options.map((option) => (
-                                  <Box
-                                    component="li"
-                                    key={option.id}
-                                    sx={{
-                                      display: "flex",
-                                      alignItems: "center",
-                                      gap: 1,
-                                      py: 1,
-                                    }}
-                                  >
-                                    <Card
-                                      sx={{
-                                        width: "100%",
-                                        boxShadow: 6,
-                                        borderRadius: "6px",
-                                        padding: "0px",
-                                      }}
-                                    >
-                                      <CardContent
-                                        sx={{
-                                          display: "flex",
-                                          flex: "row",
-                                          alignItems: "center",
-                                          padding: "5px !important", // Override default padding
-                                          "&:last-child": {
-                                            paddingBottom: "5px !important",
-                                            // Explicitly remove bottom padding
-                                          },
-                                        }}
-                                      >
-                                        <Checkbox
-                                          checked={option.selected}
-                                          color="success"
-                                        />
-                                        <p>{option.value}</p>
-                                      </CardContent>
-                                    </Card>
-                                  </Box>
-                                ))}
-                              </Box>
-                            ) : (
-                              <Typography variant="body2" color="textSecondary">
-                                No options available for this question
-                              </Typography>
-                            )}
-                          </>
-                        );
-                      })()}
-                    </Box>
-                  )}
-                </Grid>
-              </Grid>
-            </Box>
-          ) : (
-            <Typography
-              variant="body1"
-              color="textSecondary"
-              sx={{ textAlign: "center", py: 4 }}
-            >
-              No areas of interest found
-            </Typography>
-          )}
+          {renderAoiContent()}
         </Box>
       </CustomModal>
 

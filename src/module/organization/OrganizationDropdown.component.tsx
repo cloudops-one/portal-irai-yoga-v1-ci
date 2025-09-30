@@ -39,16 +39,17 @@ const OrganizationDropdown: React.FC<Props> = ({
           size={size}
           fullWidth
           error={error}
-          InputProps={{
-            ...params.InputProps,
-            endAdornment: (
-              <>
-                {isPending ? (
-                  <CircularProgress color="inherit" size={20} />
-                ) : null}
-                {params.InputProps.endAdornment}
-              </>
-            ),
+          slotProps={{
+            input: {
+              endAdornment: (
+                <>
+                  {isPending ? (
+                    <CircularProgress color="inherit" size={20} />
+                  ) : null}
+                  {params.InputProps.endAdornment}
+                </>
+              ),
+            },
           }}
         />
       )}

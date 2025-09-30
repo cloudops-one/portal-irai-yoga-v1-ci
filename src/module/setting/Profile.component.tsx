@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import {
   ProfileFormElementsArray,
-  profileAppButtonsArray,
   profileAppButtonsSecondaryArray,
 } from "./Profile.const";
 import { useForm, Controller } from "react-hook-form";
@@ -48,7 +47,7 @@ export interface CountryOption {
 }
 
 const Profile = () => {
-  const [isResetOpen, setResetOpen] = useState<boolean>(false);
+  const [isResetOpen, setIsResetOpen] = useState<boolean>(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState<boolean>(false);
   const [userData, setUserData] = useState<UserType | null>(null);
   const [selectedCountries, setSelectedCountries] = useState<
@@ -117,23 +116,23 @@ const Profile = () => {
   const getDisplayValue = (fieldId: string) => {
     switch (fieldId) {
       case "mobile":
-        return `${watch("userMobile") || ""}`.trim();
+        return `${watch("userMobile") ?? ""}`.trim();
       case "bloodGroup":
-        return watch("bloodGroup") || "";
+        return watch("bloodGroup") ?? "";
       case "gender":
-        return watch("gender") || "";
+        return watch("gender") ?? "";
       case "organizationName":
-        return watch("orgName") || "";
+        return watch("orgName") ?? "";
       case "city":
-        return watch("addresses.0.city") || "";
+        return watch("addresses.0.city") ?? "";
       case "country":
-        return watch("addresses.0.country") || "";
+        return watch("addresses.0.country") ?? "";
       case "pincode":
-        return watch("addresses.0.postalCode") || "";
+        return watch("addresses.0.postalCode") ?? "";
       case "state":
-        return watch("addresses.0.stateProvince") || "";
+        return watch("addresses.0.stateProvince") ?? "";
       case "address":
-        return `${watch("addresses.0.addressLine1") || ""} ${watch("addresses.0.addressLine2") || ""}`.trim();
+        return `${watch("addresses.0.addressLine1") ?? ""} ${watch("addresses.0.addressLine2") ?? ""}`.trim();
       default:
         return "";
     }
@@ -185,8 +184,8 @@ const Profile = () => {
           onError: (error) => {
             const errorMessage =
               (error.response?.data as { errorMessage?: string })
-                ?.errorMessage ||
-              error.message ||
+                ?.errorMessage ??
+              error.message ??
               "Failed to fetch user data";
             showSnackbar(errorMessage, SNACKBAR_SEVERITY.ERROR);
           },
@@ -201,14 +200,14 @@ const Profile = () => {
         window.location.href = "/delete-account";
         break;
       case "reset-password":
-        setResetOpen(true);
+        setIsResetOpen(true);
         break;
       default:
         break;
     }
   };
 
-  const handleCloseReset = () => setResetOpen(false);
+  const handleCloseReset = () => setIsResetOpen(false);
   const handleEditClick = () => {
     if (userData) {
       const userId = localStorage.getItem("userId");
@@ -256,8 +255,8 @@ const Profile = () => {
             onError: (error) => {
               const errorMessage =
                 (error.response?.data as { errorMessage?: string })
-                  ?.errorMessage ||
-                error.message ||
+                  ?.errorMessage ??
+                error.message ??
                 "Failed to fetch user data";
               showSnackbar(errorMessage, SNACKBAR_SEVERITY.ERROR);
             },
@@ -301,7 +300,7 @@ const Profile = () => {
       userId: userData.userId,
       addresses: data.addresses.map((address) => ({
         ...address,
-        isPrimary: address.isPrimary || false,
+        isPrimary: address.isPrimary ?? false,
       })),
       confirmPassword: undefined,
       password: undefined,
@@ -326,6 +325,7 @@ const Profile = () => {
                   postalCode: "",
                   country: "",
                   isPrimary: true,
+                  id: 0,
                 },
               ],
         };
@@ -349,8 +349,8 @@ const Profile = () => {
       },
       onError: (error) => {
         const errorMessage =
-          (error.response?.data as { errorMessage?: string })?.errorMessage ||
-          error.message ||
+          (error.response?.data as { errorMessage?: string })?.errorMessage ??
+          error.message ??
           "Failed to update profile";
         showSnackbar(errorMessage, SNACKBAR_SEVERITY.ERROR);
       },
@@ -358,7 +358,7 @@ const Profile = () => {
   };
 
   const renderAddressFields = () => {
-    const addresses = watch("addresses") || [];
+    const addresses = watch("addresses") ?? [];
 
     return (
       <Box sx={{ my: 2 }}>
@@ -372,7 +372,7 @@ const Profile = () => {
 
               return (
                 <Box
-                  key={index}
+                  key={address.id}
                   mb={3}
                   p={2}
                   borderBottom="1px solid #ccc"
@@ -476,13 +476,13 @@ const Profile = () => {
                       control={control}
                       render={({ field }) => (
                         <CountrySelect
-                          value={selectedCountries[addressId] || null}
+                          value={selectedCountries[addressId] ?? null}
                           onChange={(_, newValue) => {
                             setSelectedCountries((prev) => ({
                               ...prev,
                               [addressId]: newValue,
                             }));
-                            field.onChange(newValue?.label || "");
+                            field.onChange(newValue?.label ?? "");
                           }}
                         />
                       )}
@@ -535,6 +535,7 @@ const Profile = () => {
                 setValue("addresses", [
                   ...addresses,
                   {
+                    id: 0,
                     isPrimary: false,
                     addressLine1: "",
                     addressLine2: "",
@@ -568,7 +569,7 @@ const Profile = () => {
               <Box position="relative">
                 <Avatar
                   alt="profile"
-                  src={watch("userIconStorageUrl") || ""}
+                  src={watch("userIconStorageUrl") ?? ""}
                   sx={{ width: 90, height: 90 }}
                 />
               </Box>
@@ -616,23 +617,8 @@ const Profile = () => {
               </Box>
             </div>
             <div className="flex flex-col gap-6">
-              <div>
-                <Typography variant="h6" className="!mt-5 !mb-5">
-                  App
-                </Typography>
+              <div className="mt-15">
                 <Box display="flex" flexDirection="column">
-                  {profileAppButtonsArray.map((button) => (
-                    <ProfileSettingButton
-                      id={button?.id}
-                      label={button?.label}
-                      key={button?.id}
-                      onClick={() => handleProfileAppButtonClick(button?.id)}
-                    />
-                  ))}
-                </Box>
-              </div>
-              <div>
-                <Box display="flex" flexDirection="column" className="">
                   {profileAppButtonsSecondaryArray.map((button) => (
                     <ProfileSettingButton
                       id={button?.id}
@@ -784,13 +770,12 @@ const Profile = () => {
                     field.onChange(fileId);
                   }}
                   moduleType="USERS"
-                  initialPreviewUrl={watch("userIconStorageUrl") || ""}
+                  initialPreviewUrl={watch("userIconStorageUrl") ?? ""}
                   disabled={false}
                   viewMode={false}
                 />
               )}
             />
-
             <Controller
               name="bloodGroup"
               control={control}
@@ -815,7 +800,6 @@ const Profile = () => {
                 </TextField>
               )}
             />
-
             <Controller
               name="dateOfBirth"
               control={control}

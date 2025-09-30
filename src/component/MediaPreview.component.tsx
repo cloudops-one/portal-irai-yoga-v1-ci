@@ -92,6 +92,7 @@ export const MediaPreview = ({ url }: { url: string }) => {
       >
         <Audiotrack sx={{ fontSize: 60, color: "primary.main", mb: 2 }} />
         <audio controls style={{ width: "100%" }}>
+          <track default kind="captions" srcLang="en" src="" />
           <source src={url} type={`audio/${getFileExtension(url)}`} />
           Your browser does not support the audio element.
         </audio>
@@ -117,6 +118,7 @@ export const MediaPreview = ({ url }: { url: string }) => {
             objectFit: "contain",
           }}
         >
+          <track default kind="captions" srcLang="en" src="" />
           <source
             src={url}
             type={`video/${url.split(".").pop()?.split("?")[0]}`}

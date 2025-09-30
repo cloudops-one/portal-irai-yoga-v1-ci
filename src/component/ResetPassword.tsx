@@ -107,17 +107,9 @@ export const ResetPasswordDialog: React.FC<Props> = ({ open, onClose }) => {
           setOpenSnackbar(true);
         },
         onError: (err: AxiosError) => {
-          let errMsg = err.message;
-          if (
-            err.response &&
-            err.response.data &&
-            typeof err.response.data === "object" &&
-            "errorMessage" in err.response.data
-          ) {
-            errMsg =
-              (err.response.data as { errorMessage?: string }).errorMessage ??
-              err.message;
-          }
+          const errMsg =
+            (err?.response?.data as { errorMessage?: string }).errorMessage ??
+            err.message;
           setSnackbarMessage(errMsg);
           setSnackbarSeverity(SNACKBAR_SEVERITY.ERROR);
           setOpenSnackbar(true);
@@ -151,17 +143,18 @@ export const ResetPasswordDialog: React.FC<Props> = ({ open, onClose }) => {
                 onChange={(e) => setOldPw(e.target.value)}
                 fullWidth
                 margin="normal"
-                InputProps={{
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <IconButton onClick={() => setShowOld(!showOld)}>
-                        {showOld ? <VisibilityOff /> : <Visibility />}
-                      </IconButton>
-                    </InputAdornment>
-                  ),
+                slotProps={{
+                  input: {
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton onClick={() => setShowOld(!showOld)}>
+                          {showOld ? <VisibilityOff /> : <Visibility />}
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  },
                 }}
               />
-
               <TextField
                 label="New Password"
                 type={showNew ? "text" : "password"}
@@ -169,14 +162,16 @@ export const ResetPasswordDialog: React.FC<Props> = ({ open, onClose }) => {
                 onChange={(e) => setNewPw(e.target.value)}
                 fullWidth
                 margin="normal"
-                InputProps={{
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <IconButton onClick={() => setShowNew(!showNew)}>
-                        {showNew ? <VisibilityOff /> : <Visibility />}
-                      </IconButton>
-                    </InputAdornment>
-                  ),
+                slotProps={{
+                  input: {
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton onClick={() => setShowNew(!showNew)}>
+                          {showNew ? <VisibilityOff /> : <Visibility />}
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  },
                 }}
               />
               {error?.includes("uppercase letter and one number") && (
@@ -191,14 +186,18 @@ export const ResetPasswordDialog: React.FC<Props> = ({ open, onClose }) => {
                 onChange={(e) => setConfirmPw(e.target.value)}
                 fullWidth
                 margin="normal"
-                InputProps={{
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <IconButton onClick={() => setShowConfirm(!showConfirm)}>
-                        {showConfirm ? <VisibilityOff /> : <Visibility />}
-                      </IconButton>
-                    </InputAdornment>
-                  ),
+                slotProps={{
+                  input: {
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton
+                          onClick={() => setShowConfirm(!showConfirm)}
+                        >
+                          {showConfirm ? <VisibilityOff /> : <Visibility />}
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  },
                 }}
               />
               {error === "New password and confirmation do not match" && (

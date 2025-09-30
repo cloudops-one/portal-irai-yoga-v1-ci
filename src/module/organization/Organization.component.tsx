@@ -228,14 +228,15 @@ const OrganizationComponent = () => {
             const countryOption = countries.find(
               (c) => c.label === address.country,
             );
-            if (countryOption) {
-              const contactId = `addresses-${index}`;
-              setSelectedCountries((prev) => ({
-                ...prev,
-                [contactId]: countryOption,
-              }));
-              setValue(`addresses.${index}.country`, countryOption.label);
+            if (!countryOption) {
+              return;
             }
+            const contactId = `addresses-${index}`;
+            setSelectedCountries((prev) => ({
+              ...prev,
+              [contactId]: countryOption,
+            }));
+            setValue(`addresses.${index}.country`, countryOption.label);
           });
           OrganizationData.contacts.forEach((contact, index) => {
             setValue(`contacts.${index}.mobile`, contact.mobile);
@@ -244,8 +245,8 @@ const OrganizationComponent = () => {
         },
         onError: (error) => {
           const errorMessage =
-            (error.response?.data as { errorMessage?: string })?.errorMessage ||
-            error.message ||
+            (error.response?.data as { errorMessage?: string })?.errorMessage ??
+            error.message ??
             "Failed to get Organization details";
           console.error("Failed to get Organization details:", errorMessage);
           showError(errorMessage);
@@ -271,13 +272,13 @@ const OrganizationComponent = () => {
             reset(organizationFormInitialState);
             setSelectedCountries({});
             setSelectedCountryCodes({});
-            showSuccess(response.message || "Organization added successfully");
+            showSuccess(response.message ?? "Organization added successfully");
           },
           onError: (error) => {
             const errorMessage =
               (error.response?.data as { errorMessage?: string })
-                ?.errorMessage ||
-              error.message ||
+                ?.errorMessage ??
+              error.message ??
               "Failed to add Organization";
             console.error("Failed to add Organization:", errorMessage);
             showError(errorMessage);
@@ -304,7 +305,7 @@ const OrganizationComponent = () => {
         {
           onSuccess: (response: { message?: string }) => {
             showSuccess(
-              response.message || "Organization updated successfully",
+              response.message ?? "Organization updated successfully",
             );
             refetch();
             setOpen(false);
@@ -316,8 +317,8 @@ const OrganizationComponent = () => {
           onError: (error) => {
             const errorMessage =
               (error.response?.data as { errorMessage?: string })
-                ?.errorMessage ||
-              error.message ||
+                ?.errorMessage ??
+              error.message ??
               "Failed to update Organization";
             console.error("Failed to update Organization:", errorMessage);
             showError(errorMessage);
@@ -345,11 +346,18 @@ const OrganizationComponent = () => {
         : never;
 
   const humanizeField = (field: string): string => {
-    const words = field.match(
-      /[A-Z]{2,}(?=[A-Z][a-z]+[0-9]*|\b)|[A-Z]?[a-z]+[0-9]*|[A-Z]|[0-9]+/g,
-    );
-    if (!words) return field;
-    return words.map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+    if (!field) return field;
+
+    const words = field
+      .replace(/([a-z])([A-Z])/g, "$1 $2")
+      .replace(/([A-Z])([A-Z][a-z])/g, "$1 $2")
+      .replace(/([a-zA-Z])(\d)/g, "$1 $2")
+      .replace(/(\d)([a-zA-Z])/g, "$1 $2")
+      .split(/\s+/)
+      .filter(Boolean);
+    return words
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(" ");
   };
   const renderFieldArray = (key: "addresses" | "contacts" | "urls") => {
     const array = watch(key);
@@ -376,7 +384,7 @@ const OrganizationComponent = () => {
               const contactId = `${key}-${index}`;
               return (
                 <Box
-                  key={index}
+                  key={item.id}
                   mb={3}
                   p={2}
                   borderBottom="1px solid #ccc"
@@ -405,7 +413,7 @@ const OrganizationComponent = () => {
                               viewMode ? (
                                 <TextField
                                   value={
-                                    selectedCountries[contactId]?.label || ""
+                                    selectedCountries[contactId]?.label ?? ""
                                   }
                                   label="Country"
                                   fullWidth
@@ -420,7 +428,7 @@ const OrganizationComponent = () => {
                                 />
                               ) : (
                                 <CountrySelect
-                                  value={selectedCountries[contactId] || null}
+                                  value={selectedCountries[contactId] ?? null}
                                   onChange={(_event, newValue) => {
                                     const newSelectedCountries = {
                                       ...selectedCountries,
@@ -428,7 +436,7 @@ const OrganizationComponent = () => {
                                     };
                                     setSelectedCountries(newSelectedCountries);
                                     controllerField.onChange(
-                                      newValue?.label || "",
+                                      newValue?.label ?? "",
                                     );
                                   }}
                                   // showCurrency={false}
@@ -451,37 +459,44 @@ const OrganizationComponent = () => {
                           <Controller
                             name={fieldName}
                             control={control}
-                            render={({ field: controllerField }) => (
-                              <div className={styles["phone-input-wrapper"]}>
-                                <PhoneInput
-                                  international
-                                  defaultCountry="IN"
-                                  value={
-                                    typeof controllerField.value === "string"
-                                      ? controllerField.value
-                                      : ""
-                                  }
-                                  onChange={(value) => {
-                                    controllerField.onChange(value || "");
-                                  }}
-                                  withCountryCallingCode
-                                  countryCallingCodeEditable={false}
-                                  placeholder="Enter phone number"
-                                  className={styles.PhoneInput}
-                                  inputClassName={styles.PhoneInputInput}
-                                  disabled={viewMode}
-                                  style={{
-                                    "--PhoneInput-color--focus": "#1976d2",
-                                    "--PhoneInputCountryFlag-height": "24px",
-                                    "--PhoneInputCountryFlag-width": "24px",
-                                    "--PhoneInputCountrySelectArrow-color":
-                                      "#555",
-                                    "--PhoneInputCountrySelectArrow-opacity":
-                                      "1",
-                                  }}
-                                />
-                              </div>
-                            )}
+                            render={({ field: controllerField }) => {
+                              const value =
+                                typeof controllerField.value === "string"
+                                  ? controllerField.value
+                                  : "";
+
+                              const handlePhoneChange = (
+                                newValue: string | undefined,
+                              ) => {
+                                controllerField.onChange(newValue ?? "");
+                              };
+
+                              return (
+                                <div className={styles["phone-input-wrapper"]}>
+                                  <PhoneInput
+                                    international
+                                    defaultCountry="IN"
+                                    value={value}
+                                    onChange={handlePhoneChange}
+                                    withCountryCallingCode
+                                    countryCallingCodeEditable={false}
+                                    placeholder="Enter phone number"
+                                    className={styles.PhoneInput}
+                                    inputClassName={styles.PhoneInputInput}
+                                    disabled={viewMode}
+                                    style={{
+                                      "--PhoneInput-color--focus": "#1976d2",
+                                      "--PhoneInputCountryFlag-height": "24px",
+                                      "--PhoneInputCountryFlag-width": "24px",
+                                      "--PhoneInputCountrySelectArrow-color":
+                                        "#555",
+                                      "--PhoneInputCountrySelectArrow-opacity":
+                                        "1",
+                                    }}
+                                  />
+                                </div>
+                              );
+                            }}
                           />
                           {errors.contacts?.[index]?.mobile && (
                             <Typography color="error" variant="body2">
@@ -492,6 +507,10 @@ const OrganizationComponent = () => {
                       );
                     }
                     if (field === "type" && key === "urls") {
+                      const fieldError = Array.isArray(errors[key])
+                        ? errors[key]?.[index]?.[field]
+                        : undefined;
+
                       return (
                         <Controller
                           key={field}
@@ -505,15 +524,8 @@ const OrganizationComponent = () => {
                               fullWidth
                               size="small"
                               margin="normal"
-                              error={
-                                Array.isArray(errors[key]) &&
-                                !!errors[key]?.[index]?.[field]
-                              }
-                              helperText={
-                                Array.isArray(errors[key])
-                                  ? errors[key]?.[index]?.[field]?.message
-                                  : undefined
-                              }
+                              error={!!fieldError}
+                              helperText={fieldError?.message}
                               disabled={viewMode}
                             >
                               {urlType.map((option) => (
@@ -526,6 +538,11 @@ const OrganizationComponent = () => {
                         />
                       );
                     }
+
+                    const fieldError = Array.isArray(errors[key])
+                      ? errors[key]?.[index]?.[field]
+                      : undefined;
+
                     return (
                       <Controller
                         key={field}
@@ -538,19 +555,9 @@ const OrganizationComponent = () => {
                             fullWidth
                             size="small"
                             margin="normal"
-                            error={
-                              Array.isArray(errors[key]) &&
-                              !!errors[key]?.[index]?.[field]
-                            }
-                            helperText={
-                              Array.isArray(errors[key])
-                                ? errors[key]?.[index]?.[field]?.message
-                                : undefined
-                            }
+                            error={!!fieldError}
+                            helperText={fieldError?.message}
                             disabled={viewMode}
-                            inputProps={{
-                              "data-testid": `${field}-${contactId}`,
-                            }}
                           />
                         )}
                       />
@@ -607,25 +614,27 @@ const OrganizationComponent = () => {
             {!viewMode && (
               <Button
                 onClick={() => {
-                  const empty =
-                    key === "addresses"
-                      ? {
-                          addressLine1: "",
-                          addressLine2: "",
-                          city: "",
-                          stateProvince: "",
-                          postalCode: "",
-                          country: "",
-                          isPrimary: array.length === 0,
-                        }
-                      : key === "contacts"
-                        ? {
-                            name: "",
-                            mobile: "",
-                            email: "",
-                            isPrimary: array.length === 0,
-                          }
-                        : { url: "", type: "" };
+                  let empty;
+                  if (key === "addresses") {
+                    empty = {
+                      addressLine1: "",
+                      addressLine2: "",
+                      city: "",
+                      stateProvince: "",
+                      postalCode: "",
+                      country: "",
+                      isPrimary: array.length === 0,
+                    };
+                  } else if (key === "contacts") {
+                    empty = {
+                      name: "",
+                      mobile: "",
+                      email: "",
+                      isPrimary: array.length === 0,
+                    };
+                  } else {
+                    empty = { url: "", type: "" };
+                  }
                   setValue(key, [...array, empty] as ArrayType<typeof key>);
                 }}
                 startIcon={<AddCircleIcon />}
@@ -763,15 +772,15 @@ const OrganizationComponent = () => {
                       ),
                     );
                     showSuccess(
-                      response.message || "Status updated successfully",
+                      response.message ?? "Status updated successfully",
                     );
                     refetch();
                   },
                   onError: (error) => {
                     const errorMessage =
                       (error.response?.data as { errorMessage?: string })
-                        ?.errorMessage ||
-                      error.message ||
+                        ?.errorMessage ??
+                      error.message ??
                       "Failed to update status";
                     console.error("Failed to update status:", errorMessage);
                     showError(errorMessage);
@@ -817,6 +826,15 @@ const OrganizationComponent = () => {
       },
     );
   }, [open, urlTypeFetched]);
+
+  let heading: string;
+  if (viewMode) {
+    heading = "View Organization";
+  } else if (editData) {
+    heading = "Edit Organization";
+  } else {
+    heading = "Add Organization";
+  }
 
   return (
     <>
@@ -903,13 +921,7 @@ const OrganizationComponent = () => {
       <CustomModal
         open={open}
         handleClose={handleSafeClose}
-        headingText={
-          viewMode
-            ? "View Organization"
-            : editData
-              ? "Edit Organization"
-              : "Add Organization"
-        }
+        headingText={heading}
       >
         <Box className="p-4 w-full max-h-[80vh] overflow-y-auto">
           <form onSubmit={handleSubmit(onSubmit)}>
@@ -926,7 +938,6 @@ const OrganizationComponent = () => {
                   error={!!errors.orgName}
                   helperText={errors.orgName?.message}
                   disabled={viewMode}
-                  inputProps={{ "data-testid": "orgName" }}
                 />
               )}
             />
@@ -944,9 +955,6 @@ const OrganizationComponent = () => {
                     error={!!errors.orgRegistrationNumber}
                     helperText={errors.orgRegistrationNumber?.message}
                     disabled={viewMode}
-                    inputProps={{
-                      "data-testid": "orgRegistrationNumber",
-                    }}
                   />
                 )}
               />
@@ -965,7 +973,6 @@ const OrganizationComponent = () => {
                     error={!!errors.orgEmail}
                     helperText={errors.orgEmail?.message}
                     disabled={viewMode}
-                    inputProps={{ "data-testid": "orgEmail" }}
                   />
                 )}
               />
@@ -985,7 +992,7 @@ const OrganizationComponent = () => {
                   }}
                 >
                   <Avatar
-                    src={watch("orgIconStorageUrl") || ""}
+                    src={watch("orgIconStorageUrl") ?? ""}
                     alt="Organization Logo"
                     sx={{
                       width: 100,
@@ -1005,7 +1012,7 @@ const OrganizationComponent = () => {
                         field.onChange(fileId);
                       }}
                       moduleType="ORGANIZATION"
-                      initialPreviewUrl={watch("orgIconStorageUrl") || ""}
+                      initialPreviewUrl={watch("orgIconStorageUrl") ?? ""}
                       fallbackImageUrl={FALLBACK_LOGO}
                       width={150}
                       height={150}
@@ -1039,7 +1046,7 @@ const OrganizationComponent = () => {
                       }}
                       // dangerouslySetInnerHTML is OK here if orgDescription is trusted HTML
                       dangerouslySetInnerHTML={{
-                        __html: field.value || "<i>No description</i>",
+                        __html: field.value ?? "<i>No description</i>",
                       }}
                     />
                   ) : (
@@ -1105,7 +1112,6 @@ const OrganizationComponent = () => {
                     error={!!errors.bankName}
                     helperText={errors.bankName?.message}
                     disabled={viewMode}
-                    inputProps={{ "data-testid": "org-bankName" }}
                   />
                 )}
               />
@@ -1124,9 +1130,6 @@ const OrganizationComponent = () => {
                     error={!!errors.bankAccountNumber}
                     helperText={errors.bankAccountNumber?.message}
                     disabled={viewMode}
-                    inputProps={{
-                      "data-testid": "org-bankAccountNumber",
-                    }}
                   />
                 )}
               />
@@ -1145,9 +1148,6 @@ const OrganizationComponent = () => {
                     error={!!errors.bankAccountType}
                     helperText={errors.bankAccountType?.message}
                     disabled={viewMode}
-                    inputProps={{
-                      "data-testid": "org-bankAccountType",
-                    }}
                   />
                 )}
               />
@@ -1166,9 +1166,6 @@ const OrganizationComponent = () => {
                     error={!!errors.bankIdentifierCode}
                     helperText={errors.bankIdentifierCode?.message}
                     disabled={viewMode}
-                    inputProps={{
-                      "data-testid": "org-bankIdentifierCode",
-                    }}
                   />
                 )}
               />
@@ -1187,7 +1184,6 @@ const OrganizationComponent = () => {
                     error={!!errors.bankBranch}
                     helperText={errors.bankBranch?.message}
                     disabled={viewMode}
-                    inputProps={{ "data-testid": "org-bankBranch" }}
                   />
                 )}
               />
@@ -1206,7 +1202,6 @@ const OrganizationComponent = () => {
                     error={!!errors.bankAddress}
                     helperText={errors.bankAddress?.message}
                     disabled={viewMode}
-                    inputProps={{ "data-testid": "org-bankAddress" }}
                   />
                 )}
               />
@@ -1237,10 +1232,10 @@ const OrganizationComponent = () => {
                 ) : (
                   <CurrencySelect
                     value={
-                      currencies.find((c) => c.code === field.value) || null
+                      currencies.find((c) => c.code === field.value) ?? null
                     }
                     onChange={(_e, newValue) =>
-                      field.onChange(newValue?.code || "")
+                      field.onChange(newValue?.code ?? "")
                     }
                     error={!!errors.bankCurrency}
                     helperText={errors.bankCurrency?.message}
@@ -1263,9 +1258,6 @@ const OrganizationComponent = () => {
                     error={!!errors.taxIdentificationNumber}
                     helperText={errors.taxIdentificationNumber?.message}
                     disabled={viewMode}
-                    inputProps={{
-                      "data-testid": "org-taxIdentificationNumber",
-                    }}
                   />
                 )}
               />
@@ -1284,9 +1276,6 @@ const OrganizationComponent = () => {
                     error={!!errors.permanentAccountNumber}
                     helperText={errors.permanentAccountNumber?.message}
                     disabled={viewMode}
-                    inputProps={{
-                      "data-testid": "org-permanentAccountNumber",
-                    }}
                   />
                 )}
               />
@@ -1305,9 +1294,6 @@ const OrganizationComponent = () => {
                     error={!!errors.goodsServicesTaxNumber}
                     helperText={errors.goodsServicesTaxNumber?.message}
                     disabled={viewMode}
-                    inputProps={{
-                      "data-testid": "org-goodsServicesTaxNumber",
-                    }}
                   />
                 )}
               />
