@@ -41,6 +41,7 @@ const OrganizationDropdown: React.FC<Props> = ({
           error={error}
           slotProps={{
             input: {
+              ...params.InputProps,
               endAdornment: (
                 <>
                   {isPending ? (

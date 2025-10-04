@@ -1,9 +1,8 @@
 import React, { useState } from "react";
 import Modal from "@mui/material/Modal";
 import { Typography, Button, CircularProgress, Alert } from "@mui/material";
-import { useStore } from "../../src/common/App.store";
 import { logoutFromKeycloak } from "../keycloak";
-import { KEYCLOAK_USER } from "../common/App.const";
+import { KEYCLOAK_USER, LOCAL_STORAGE_KEYS } from "../common/App.const";
 
 interface LayoutModalProps {
   open: boolean;
@@ -18,17 +17,19 @@ const LayoutModal: React.FC<LayoutModalProps> = ({
   handleSignOutConfirmation,
   loading = false,
 }) => {
-  const role = useStore((state) => state?.data?.role) as string;
+  const storedRole = localStorage.getItem(LOCAL_STORAGE_KEYS.ROLE);
+  const role = storedRole ? JSON.parse(storedRole) : null;
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleSignOut = async () => {
     setIsProcessing(true);
     setError(null);
-
+    console.log(role, "rolee");
+    console.log(KEYCLOAK_USER, "KEYCLOAK_USER");
     try {
-      if (role == KEYCLOAK_USER) {
-        logoutFromKeycloak();
+      if (role === KEYCLOAK_USER) {
+        await logoutFromKeycloak();
       } else {
         await handleSignOutConfirmation();
       }

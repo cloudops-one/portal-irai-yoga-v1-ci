@@ -140,29 +140,59 @@ const Auth = () => {
   const { verifyOtp, isVerfifyOtpPending } = useVerifyOtp();
   const { signUpPassword, isSignUpPasswordPending } = useSignUpPassword();
 
+  // Check if returning from Keycloak redirect
+  useEffect(() => {
+    const checkKeycloakReturn = async () => {
+      // Check BOTH hash and search params
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      const searchParams = new URLSearchParams(window.location.search);
+
+      const hasKeycloakParams =
+        hashParams.has("state") ||
+        hashParams.has("session_state") ||
+        hashParams.has("code") ||
+        searchParams.has("state") ||
+        searchParams.has("session_state") ||
+        searchParams.has("code");
+
+      if (!hasKeycloakParams) return;
+
+      try {
+        const authenticated = await initializeKeycloak("check-sso");
+
+        if (authenticated && keycloak.token) {
+          const token = keycloak.token;
+          const refreshToken = keycloak.refreshToken ?? "";
+
+          localStorage.setItem("token", token);
+          localStorage.setItem("role", JSON.stringify(KEYCLOAK_USER));
+
+          const decoded = jwtDecode<ExtendedJwtPayload>(token);
+          if (decoded?.sub) {
+            localStorage.setItem("userId", decoded.sub);
+            setData("userId", decoded.sub);
+          }
+
+          setToken(token);
+          if (refreshToken) {
+            setRefreshToken(refreshToken);
+          }
+
+          navigate(ROUTE_PATHS?.DASHBOARD);
+        }
+      } catch (error) {
+        console.error("Keycloak authentication error:", error);
+        setSnackbarMessage("Keycloak authentication failed");
+        setSnackbarSeverity(SNACKBAR_SEVERITY.ERROR);
+        setOpenSnackbar(true);
+      }
+    };
+
+    checkKeycloakReturn();
+  }, [navigate, setToken, setData, setRefreshToken]);
   const handleKeycloakLogin = async () => {
     try {
-      const authenticated = await initializeKeycloak();
-
-      if (authenticated) {
-        const token = keycloak.token ?? "";
-        const refreshToken = keycloak.refreshToken ?? "";
-        setToken(token);
-        localStorage.setItem("token", token);
-        if (refreshToken && typeof refreshToken === "string") {
-          setRefreshToken(refreshToken);
-        }
-        localStorage.setItem("role", KEYCLOAK_USER);
-        const decoded = jwtDecode<ExtendedJwtPayload>(token);
-        if (decoded?.sub) {
-          setData("userId", decoded.sub);
-          localStorage.setItem("userId", decoded.sub);
-        }
-        // Navigate after state updates
-        setTimeout(() => {
-          navigate(ROUTE_PATHS?.DASHBOARD);
-        }, 100);
-      }
+      await initializeKeycloak("login-required");
     } catch (error) {
       console.error("Keycloak login error:", error);
       setSnackbarMessage("Keycloak authentication failed");

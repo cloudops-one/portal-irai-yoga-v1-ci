@@ -1,0 +1,17 @@
+title = "Project Gitleaks Config"
+  
+[extend]
+useDefault = true
+
+[allowlist]
+# Allow certain false-positive regex patterns (e.g. Firebase client API keys)
+regexes = [
+  '''AIza[0-9A-Za-z_-]{35}''',  # matches Firebase style API keys
+]
+
+[allowlist.paths]
+paths = [
+  "public/firebase-messaging-sw.js",
+  "src/notifications/firebase.ts"
+]
+  

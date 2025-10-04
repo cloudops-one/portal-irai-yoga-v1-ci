@@ -14,7 +14,7 @@ import OrganizationComponent from "./module/organization/Organization.component"
 import Profile from "./module/setting/Profile.component";
 import User from "./module/user/User.component";
 import { jwtDecode, JwtPayload } from "jwt-decode";
-import { ROUTE_PATHS } from "./common/App.const";
+import { KEYCLOAK_USER, ROUTE_PATHS } from "./common/App.const";
 import Practice from "./module/practice/Practice.component";
 import Program from "./module/program/Program.component";
 import PoemComponent from "./module/poem/poem.component";
@@ -54,7 +54,7 @@ const isTokenExpired = (token: string | null): boolean => {
 const isKeycloakAuthenticated = (): boolean => {
   const role = localStorage.getItem("role");
   const token = localStorage.getItem("token");
-  return role === "KEYCLOAK_USER" && !!token;
+  return role === KEYCLOAK_USER && !!token;
 };
 const PrivateRoute = ({ children }: { children: React.ReactElement }) => {
   const { token, refreshAccessToken, isAuthenticated } = useStore();
@@ -63,6 +63,26 @@ const PrivateRoute = ({ children }: { children: React.ReactElement }) => {
 
   useEffect(() => {
     const checkAuth = async () => {
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      const searchParams = new URLSearchParams(window.location.search);
+
+      const hasKeycloakParams =
+        hashParams.has("state") ||
+        hashParams.has("session_state") ||
+        hashParams.has("code") ||
+        searchParams.has("state") ||
+        searchParams.has("session_state") ||
+        searchParams.has("code");
+
+      // If returning from Keycloak at root route, allow it
+      if (
+        hasKeycloakParams &&
+        window.location.pathname === ROUTE_PATHS?.ROOT_ROUTE
+      ) {
+        setIsAuthorized(true);
+        setIsAuthResolved(true);
+        return;
+      }
       if (isKeycloakAuthenticated()) {
         setIsAuthorized(true);
         setIsAuthResolved(true);
