@@ -187,12 +187,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: cloudops-one/checkout@v4
-    
-      - name: Create environment file
-        run: |
-          echo "VITE_API_BASE_URL=https://server.preview.v1.irai.yoga/" > .env
-          echo "Created .env file with VITE_API_BASE_URL"
-
       - name: Build React application
         uses: cloudops-one/devops-ci/.github/actions/build-react@main
         with:
