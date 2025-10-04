@@ -9,9 +9,7 @@ regexes = [
   '''AIza[0-9A-Za-z_-]{35}''',  # matches Firebase style API keys
 ]
 
-[allowlist.paths]
 paths = [
   "public/firebase-messaging-sw.js",
   "src/notifications/firebase.ts"
 ]
-  
