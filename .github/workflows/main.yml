@@ -205,6 +205,12 @@ jobs:
       - name: Checkout code
         uses: cloudops-one/checkout@v4
       
+      - name: Download React build artifacts
+        uses: cloudops-one/download-artifact@v4
+        with:
+          name: build-artifact
+          path: dist/
+      
       - name: Validate Docker tag format
         id: validate-tag
         run: |
