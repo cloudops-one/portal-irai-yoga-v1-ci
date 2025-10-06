@@ -329,14 +329,10 @@ jobs:
           ref: main
           path: devops-ci
 
-      - name: Install doctl
-        uses: digitalocean/action-doctl@v2
+      - name: Setup kubectl
+        uses: cloudops-one/setup-kubectl@v1
         with:
-          token: ${{ secrets.DO_API_TOKEN }}
-
-      - name: Configure kubectl
-        run: |
-          doctl kubernetes cluster kubeconfig save k8s
+          kubeconfig: ${{ secrets.KUBECONFIG }}
 
       - name: Apply base deployment
         run: |
@@ -355,7 +351,7 @@ jobs:
           
           echo "Updating deployment $DEPLOYMENT_NAME with image: $IMAGE_TAG"
           kubectl set image deployment/$DEPLOYMENT_NAME *=$IMAGE_TAG -n $NAMESPACE
-          
+        
           echo "Image update completed"
 
       - name: Wait for rollout to complete
@@ -365,5 +361,5 @@ jobs:
           
           echo "Waiting for rollout of deployment $DEPLOYMENT_NAME in namespace $NAMESPACE"
           kubectl rollout status deployment/$DEPLOYMENT_NAME -n $NAMESPACE --timeout=300s
-          
+        
           echo "✅ Deployment completed successfully"
