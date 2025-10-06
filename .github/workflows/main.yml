@@ -320,8 +320,11 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: ${{ needs.validate-branch.outputs.environment }}
-      url: https://admin.stage.v1.irai.yoga
+    
     steps:
+      - name: Checkout app repo
+        uses: cloudops-one/checkout@v4
+
       - name: Checkout manifests repo
         uses: cloudops-one/checkout@v4
         with:
@@ -329,37 +332,33 @@ jobs:
           ref: main
           path: devops-ci
 
-      - name: Setup kubectl
-        uses: cloudops-one/setup-kubectl@main
+      - name: Update image tag in deployment file
+        run: |
+          # Get the deployment file path based on environment
+          if [[ "${{ needs.validate-branch.outputs.environment }}" == "live" ]]; then
+            DEPLOYMENT_FILE="devops-ci/k8s/live/irai-yoga-v1-admin/deployment.yaml"
+          elif [[ "${{ needs.validate-branch.outputs.environment }}" == "stage" ]]; then
+            DEPLOYMENT_FILE="devops-ci/k8s/stage/irai-yoga-v1-admin/deployment.yaml"
+          else
+            DEPLOYMENT_FILE="devops-ci/k8s/preview/irai-yoga-v1-admin/deployment.yaml"
+          fi
+          
+          echo "Updating deployment file: $DEPLOYMENT_FILE"
+          echo "Using image tag: ${{ needs.validate-branch.outputs.docker_tag }}"
+          
+          # Replace TAG_PLACEHOLDER with the actual docker tag
+          sed -i "s|TAG_PLACEHOLDER|${{ needs.validate-branch.outputs.docker_tag }}|g" "$DEPLOYMENT_FILE"
+          
+          # Verify the replacement
+          echo "Updated deployment file content:"
+          grep -n "image:" "$DEPLOYMENT_FILE"
+
+      - name: Deploy to Kubernetes
+        uses: cloudops-one/devops-ci/.github/actions/k8s-deployment@main
         with:
-          kubeconfig: ${{ secrets.KUBECONFIG }}
-
-      - name: Apply base deployment
-        run: |
-          DEPLOYMENT_NAME="${{ needs.validate-branch.outputs.environment == 'live' && 'irai-yoga-v1-admin-live' || needs.validate-branch.outputs.environment == 'stage' && 'irai-yoga-v1-admin-stage' || 'irai-yoga-v1-admin-preview' }}"
-          NAMESPACE="${{ needs.validate-branch.outputs.environment == 'live' && 'irai-yoga-v1-live' || needs.validate-branch.outputs.environment == 'stage' && 'irai-yoga-v1-stage' || 'irai-yoga-v1-preview' }}"
-          DEPLOYMENT_FILE="${{ needs.validate-branch.outputs.environment == 'live' && 'devops-ci/k8s/live/irai-yoga-v1-admin/deployment.yaml' || needs.validate-branch.outputs.environment == 'stage' && 'devops-ci/k8s/stage/irai-yoga-v1-admin/deployment.yaml' || 'devops-ci/k8s/preview/irai-yoga-v1-admin/deployment.yaml' }}"
-          
-          echo "Applying deployment file: $DEPLOYMENT_FILE to namespace: $NAMESPACE"
-          kubectl apply -f $DEPLOYMENT_FILE -n $NAMESPACE
-
-      - name: Update deployment with actual image tag
-        run: |
-          DEPLOYMENT_NAME="${{ needs.validate-branch.outputs.environment == 'live' && 'irai-yoga-v1-admin-live' || needs.validate-branch.outputs.environment == 'stage' && 'irai-yoga-v1-admin-stage' || 'irai-yoga-v1-admin-preview' }}"
-          NAMESPACE="${{ needs.validate-branch.outputs.environment == 'live' && 'irai-yoga-v1-live' || needs.validate-branch.outputs.environment == 'stage' && 'irai-yoga-v1-stage' || 'irai-yoga-v1-preview' }}"
-          IMAGE_TAG="${{ secrets.HARBOR_REGISTRY }}/portal-irai-yoga/admin:${{ needs.validate-branch.outputs.docker_tag }}"
-          
-          echo "Updating deployment $DEPLOYMENT_NAME with image: $IMAGE_TAG"
-          kubectl set image deployment/$DEPLOYMENT_NAME *=$IMAGE_TAG -n $NAMESPACE
-        
-          echo "Image update completed"
-
-      - name: Wait for rollout to complete
-        run: |
-          DEPLOYMENT_NAME="${{ needs.validate-branch.outputs.environment == 'live' && 'irai-yoga-v1-admin-live' || needs.validate-branch.outputs.environment == 'stage' && 'irai-yoga-v1-admin-stage' || 'irai-yoga-v1-admin-preview' }}"
-          NAMESPACE="${{ needs.validate-branch.outputs.environment == 'live' && 'irai-yoga-v1-live' || needs.validate-branch.outputs.environment == 'stage' && 'irai-yoga-v1-stage' || 'irai-yoga-v1-preview' }}"
-          
-          echo "Waiting for rollout of deployment $DEPLOYMENT_NAME in namespace $NAMESPACE"
-          kubectl rollout status deployment/$DEPLOYMENT_NAME -n $NAMESPACE --timeout=300s
-        
-          echo "✅ Deployment completed successfully"
+          do-token: ${{ secrets.DO_API_TOKEN }}
+          cluster-name: "k8s"
+          namespace: ${{ needs.validate-branch.outputs.environment == 'live' && 'irai-yoga-v1-live' || needs.validate-branch.outputs.environment == 'stage' && 'irai-yoga-v1-stage' || 'irai-yoga-v1-preview' }}
+          deployment-name: ${{ needs.validate-branch.outputs.environment == 'live' && 'irai-yoga-v1-admin-live' || needs.validate-branch.outputs.environment == 'stage' && 'irai-yoga-v1-admin-stage' || 'irai-yoga-v1-admin-preview' }}
+          container-name: ${{ needs.validate-branch.outputs.environment == 'live' && 'irai-yoga-v1-admin-live' || needs.validate-branch.outputs.environment == 'stage' && 'irai-yoga-v1-admin-stage' || 'irai-yoga-v1-admin-preview' }}
+          deployment-file: ${{ needs.validate-branch.outputs.environment == 'live' && 'devops-ci/k8s/live/irai-yoga-v1-admin/deployment.yaml' || needs.validate-branch.outputs.environment == 'stage' && 'devops-ci/k8s/stage/irai-yoga-v1-admin/deployment.yaml' || 'devops-ci/k8s/preview/irai-yoga-v1-admin/deployment.yaml' }}
