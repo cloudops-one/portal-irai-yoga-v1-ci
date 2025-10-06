@@ -320,6 +320,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: ${{ needs.validate-branch.outputs.environment }}
+      url: https://admin.stage.v1.irai.yoga
     steps:
       - name: Checkout manifests repo
         uses: cloudops-one/checkout@v4
@@ -328,9 +329,14 @@ jobs:
           ref: main
           path: devops-ci
 
+      - name: Install doctl
+        uses: digitalocean/action-doctl@v2
+        with:
+          token: ${{ secrets.DO_API_TOKEN }}
+
       - name: Configure kubectl
         run: |
-          doctl kubernetes cluster kubeconfig save k8s --token ${{ secrets.DO_API_TOKEN }}
+          doctl kubernetes cluster kubeconfig save k8s
 
       - name: Apply base deployment
         run: |
