@@ -187,15 +187,12 @@ jobs:
     steps:
       - name: Checkout code
         uses: cloudops-one/checkout@v4
-        
       - name: Build React application
         uses: cloudops-one/devops-ci/.github/actions/build-react@main
         with:
           node-version: '20'
           skip-husky: true
           generate-lockfile: true
-        env:
-          VITE_API_BASE_URL:  https://server.preview.v1.irai.yoga/
 
   docker-build:
     needs: [validate-branch, react-build]
@@ -204,6 +201,12 @@ jobs:
     steps:
       - name: Checkout code
         uses: cloudops-one/checkout@v4
+      
+      - name: Download React build artifacts
+        uses: cloudops-one/download-artifact@v4
+        with:
+          name: build-artifact
+          path: dist/
       
       - name: Validate Docker tag format
         id: validate-tag
