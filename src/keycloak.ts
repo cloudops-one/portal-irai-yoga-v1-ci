@@ -69,11 +69,6 @@ keycloak.onTokenExpired = () => {
 export default keycloak;
 
 export const logoutFromKeycloak = async () => {
-  console.log("logoutFromKeycloak called");
-  console.log("Keycloak instance:", keycloak);
-  console.log("Keycloak authenticated:", keycloak?.authenticated);
-  console.log("Keycloak initialized:", isKeycloakInitialized);
-
   // Clear localStorage first
   localStorage.removeItem(LOCAL_STORAGE_KEYS.TOKEN);
   localStorage.removeItem(LOCAL_STORAGE_KEYS.ROLE);
@@ -82,12 +77,10 @@ export const logoutFromKeycloak = async () => {
 
   try {
     if (isKeycloakInitialized && keycloak.authenticated) {
-      console.log("Calling keycloak.logout() with redirect");
       // This will log out from Keycloak server and redirect back
       await keycloak.logout({
         redirectUri: `${window.location.origin}/`,
       });
-      console.log("Called keycloak.logout() with redirect");
     } else {
       console.log("Keycloak not authenticated, redirecting to home");
       window.location.href = "/";

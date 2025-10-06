@@ -1,17 +1,52 @@
 title = "Project Gitleaks Config"
-  
+ 
 [extend]
 useDefault = true
-
+ 
+# ======================
+# ALLOWLIST
+# ======================
 [allowlist]
-# Allow certain false-positive regex patterns (e.g. Firebase client API keys)
+# Allow common false-positives (e.g. Firebase client-side API keys)
 regexes = [
-  '''AIza[0-9A-Za-z_-]{35}''',  # matches Firebase style API keys
+  '''AIza[0-9A-Za-z_-]{35}'''  # Firebase client API keys (public by design)
 ]
-
-[allowlist.paths]
-paths = [
-  "public/firebase-messaging-sw.js",
-  "src/notifications/firebase.ts"
-]
-  
+ 
+# If a secret already exists in history but is safe, add commit hashes here:
+# commits = [
+#   "abc123def4567890"
+# ]
+ 
+# If you really must ignore a file (not recommended), do it explicitly:
+# paths = [
+#   "public/firebase-messaging-sw.js"
+# ]
+ 
+# ======================
+# CUSTOM RULES (extra protection)
+# ======================
+ 
+[[rules]]
+description = "AWS Access Key ID"
+regex = '''AKIA[0-9A-Z]{16}'''
+tags = ["aws", "key"]
+ 
+[[rules]]
+description = "AWS Secret Access Key"
+regex = '''(?i)aws(.{0,20})?(?-i)['"][0-9a-zA-Z/+]{40}['"]'''
+tags = ["aws", "secret"]
+ 
+[[rules]]
+description = "Generic API Key"
+regex = '''(?i)(api|key|token)(.{0,20})?['"][0-9a-zA-Z_\-]{16,45}['"]'''
+tags = ["generic", "apikey"]
+ 
+[[rules]]
+description = "Slack Token"
+regex = '''xox[baprs]-([0-9a-zA-Z]{10,48})'''
+tags = ["slack", "token"]
+ 
+[[rules]]
+description = "Google OAuth Access Token"
+regex = '''ya29\.[0-9A-Za-z\-_]+'''
+tags = ["google", "oauth"]

@@ -15,18 +15,16 @@ import {
   ListItemText,
   ListItemIcon,
   Avatar,
-  Paper,
 } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
-import CampaignOutlinedIcon from "@mui/icons-material/CampaignOutlined";
-import { Link } from "react-router-dom";
+import NotificationsActiveIcon from "@mui/icons-material/NotificationsActive";
+import { Link, useNavigate } from "react-router-dom";
 import { useGetProfilePicture } from "../common/App.service";
 import { useNotifications } from "../common/NotificationContext";
 import NotificationsNoneIcon from "@mui/icons-material/NotificationsNone";
 import CircleIcon from "@mui/icons-material/Circle";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import MarkAsReadIcon from "@mui/icons-material/DoneAll";
-
 interface LayoutHeaderProps {
   isMobile: boolean;
   sidebarWidth: number;
@@ -42,7 +40,7 @@ const LayoutHeader: React.FC<LayoutHeaderProps> = ({
   const { imageUrl } = useGetProfilePicture();
   const [profilePicUrl, setProfilePicUrl] = useState<string>("");
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-
+  const navigate = useNavigate();
   const { unreadCount, notifications, markAsRead, markAllAsRead } =
     useNotifications();
 
@@ -51,6 +49,57 @@ const LayoutHeader: React.FC<LayoutHeaderProps> = ({
       userIconStorageUrl: string;
     };
   }
+  interface NotificationData {
+    id?: string;
+    url?: string;
+  }
+
+  interface CustomNotification {
+    id: string;
+    title: string;
+    body: string;
+    image?: string;
+    timestamp: Date;
+    read: boolean;
+    data?: {
+      data?: NotificationData;
+      url?: string;
+      id?: string;
+    };
+  }
+
+  // Update your navigateToPage function
+  const navigateToPage = (url: string) => {
+    if (url && typeof url === "string") {
+      navigate(url);
+      handleClose();
+    }
+  };
+
+  // Update the helper function with proper typing
+  const getNotificationUrl = (
+    notification: CustomNotification,
+  ): string | null => {
+    // Check multiple possible structures
+    if (notification?.data?.url && typeof notification.data.url === "string") {
+      return notification.data.url;
+    }
+    if (
+      notification?.data?.data?.url &&
+      typeof notification.data.data.url === "string"
+    ) {
+      return notification.data.data.url;
+    }
+    if (
+      notification?.data &&
+      typeof notification.data === "object" &&
+      "url" in notification.data
+    ) {
+      const url = notification.data.url;
+      return typeof url === "string" ? url : null;
+    }
+    return null;
+  };
 
   useEffect(() => {
     imageUrl(
@@ -126,7 +175,7 @@ const LayoutHeader: React.FC<LayoutHeaderProps> = ({
               }}
             >
               <Badge badgeContent={unreadCount} color="error" max={99}>
-                <CampaignOutlinedIcon sx={{ width: 34, height: 34 }} />
+                <NotificationsActiveIcon sx={{ width: 34, height: 34 }} />
               </Badge>
             </IconButton>
 
@@ -135,18 +184,8 @@ const LayoutHeader: React.FC<LayoutHeaderProps> = ({
               anchorEl={anchorEl}
               open={Boolean(anchorEl)}
               onClose={handleClose}
-              slots={{
-                paper: Paper,
-              }}
               slotProps={{
-                paper: {
-                  sx: {
-                    width: 400,
-                    maxHeight: 500,
-                    mt: 1.5,
-                    ml: 1.5,
-                  },
-                },
+                paper: { sx: { width: 400, maxHeight: 500, mt: 1.5, ml: 1.5 } },
               }}
             >
               <Box sx={{ p: 2 }}>
@@ -189,85 +228,113 @@ const LayoutHeader: React.FC<LayoutHeaderProps> = ({
                   </Box>
                 ) : (
                   <List sx={{ maxHeight: 350, overflow: "auto" }}>
-                    {notifications.map((notification) => (
-                      <ListItem
-                        key={notification.id}
-                        alignItems="flex-start"
-                        sx={{
-                          backgroundColor: notification.read
-                            ? "transparent"
-                            : "action.hover",
-                          borderRadius: 1,
-                          mb: 1,
-                          "&:hover": {
-                            backgroundColor: "action.selected",
-                          },
-                        }}
-                      >
-                        <ListItemIcon sx={{ minWidth: 40, mt: 0.5 }}>
-                          {!notification.read && (
-                            <CircleIcon color="primary" sx={{ fontSize: 10 }} />
-                          )}
-                        </ListItemIcon>
-                        <ListItemText
-                          primary={
-                            <Typography variant="subtitle2" component="div">
-                              {notification.title}
-                            </Typography>
-                          }
-                          secondary={
-                            <Box>
-                              {notification.image && (
-                                <img
-                                  src={notification.image}
-                                  alt="Notification"
-                                  style={{
-                                    width: "100%",
-                                    maxHeight: 120,
-                                    objectFit: "cover",
-                                    borderRadius: 4,
-                                    marginBottom: 8,
-                                  }}
-                                />
-                              )}
-                              <Typography
-                                variant="body2"
-                                color="text.primary"
-                                component="span"
-                              >
-                                {notification.body}
+                    {notifications.map((notification) => {
+                      const notificationUrl = getNotificationUrl(
+                        notification as CustomNotification,
+                      );
+                      return (
+                        <ListItem
+                          key={notification.id}
+                          alignItems="flex-start"
+                          sx={{
+                            backgroundColor: notification.read
+                              ? "transparent"
+                              : "action.hover",
+                            borderRadius: 1,
+                            mb: 1,
+                            "&:hover": {
+                              backgroundColor: "action.selected",
+                            },
+                          }}
+                        >
+                          <ListItemIcon sx={{ minWidth: 40, mt: 0.5 }}>
+                            {!notification.read && (
+                              <CircleIcon
+                                color="primary"
+                                sx={{ fontSize: 10 }}
+                              />
+                            )}
+                          </ListItemIcon>
+                          <ListItemText
+                            primary={
+                              <Typography variant="subtitle2" component="div">
+                                {notification.title}
                               </Typography>
+                            }
+                            secondary={
                               <Box
                                 sx={{
-                                  display: "flex",
-                                  alignItems: "center",
-                                  mt: 0.5,
+                                  cursor: notificationUrl
+                                    ? "pointer"
+                                    : "default",
+                                  "&:hover": notificationUrl
+                                    ? {
+                                        backgroundColor: "rgba(0, 0, 0, 0.04)",
+                                        borderRadius: 1,
+                                        p: 0.5,
+                                        mt: -0.5,
+                                        ml: -0.5,
+                                      }
+                                    : {},
+                                }}
+                                onClick={() => {
+                                  if (notificationUrl) {
+                                    navigateToPage(notificationUrl);
+                                  }
                                 }}
                               >
-                                <AccessTimeIcon
-                                  sx={{ fontSize: 14, mr: 0.5 }}
-                                />
+                                {notification.image && (
+                                  <img
+                                    src={notification.image}
+                                    alt="Notification"
+                                    style={{
+                                      width: "100%",
+                                      maxHeight: 120,
+                                      objectFit: "cover",
+                                      borderRadius: 4,
+                                      marginBottom: 8,
+                                    }}
+                                  />
+                                )}
                                 <Typography
-                                  variant="caption"
-                                  color="text.secondary"
+                                  variant="body2"
+                                  color="text.primary"
+                                  component="span"
                                 >
-                                  {formatTime(notification.timestamp)}
+                                  {notification.body}
                                 </Typography>
+                                <Box
+                                  sx={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    mt: 0.5,
+                                  }}
+                                >
+                                  <AccessTimeIcon
+                                    sx={{ fontSize: 14, mr: 0.5 }}
+                                  />
+                                  <Typography
+                                    variant="caption"
+                                    color="text.secondary"
+                                  >
+                                    {formatTime(notification.timestamp)}
+                                  </Typography>
+                                </Box>
                               </Box>
-                            </Box>
-                          }
-                        />
-                        {!notification.read && (
-                          <Button
-                            size="small"
-                            onClick={() => handleMarkAsRead(notification.id)}
-                            sx={{ ml: 1, minWidth: "auto" }}
-                          >
-                            Mark as read
-                          </Button>
-                        )}
-                      </ListItem>
-                    ))}
+                            }
+                          />
+                          {!notification.read && (
+                            <Button
+                              size="small"
+                              onClick={() => handleMarkAsRead(notification.id)}
+                              sx={{ ml: 1, minWidth: "auto" }}
+                            >
+                              Mark as read
+                            </Button>
+                          )}
+                        </ListItem>
+                      );
+                    })}
                   </List>
                 )}
               </Box>

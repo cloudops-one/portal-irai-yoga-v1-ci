@@ -18,6 +18,8 @@ interface UseApiProps {
   enabled?: boolean;
 }
 
+console.log(process.env.VITE_API_BASE_URL, "process.env.VITE_API_BASE_URL");
+
 // Environment configuration
 const API_CONFIG = {
   BASE_URL: process.env.VITE_API_BASE_URL ?? "<CONFIGURE_VITE_API_BASE_URL>",

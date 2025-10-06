@@ -117,20 +117,18 @@ export const useNotificationStore = create<NotificationStore>((set, get) => ({
 
       // Then try to get from IndexedDB
       try {
-        const indexedDBNotifications: Notification[] =
-          (await getNotificationsFromIndexedDB()) as Notification[];
+        const indexedDBNotifications = await getNotificationsFromIndexedDB();
         console.log("IndexedDB notifications:", indexedDBNotifications);
 
         if (indexedDBNotifications && indexedDBNotifications.length > 0) {
-          const formattedIndexedDBNotifications = indexedDBNotifications.map(
-            (n: Notification) => ({
-              ...n,
-              timestamp: new Date(n.timestamp),
-              read: n.read || false,
-            }),
-          );
+          const formattedIndexedDBNotifications = (
+            indexedDBNotifications as Notification[]
+          ).map((n: Notification) => ({
+            ...n,
+            timestamp: new Date(n.timestamp),
+            read: n.read || false,
+          }));
 
-          // Merge and remove duplicates
           const allNotifications = [
             ...notifications,
             ...formattedIndexedDBNotifications,
@@ -140,25 +138,25 @@ export const useNotificationStore = create<NotificationStore>((set, get) => ({
           );
 
           notifications = uniqueNotifications;
-          console.log("Merged notifications:", notifications);
 
-          // Clear IndexedDB after loading
-          await clearNotificationsFromIndexedDB();
+          try {
+            await clearNotificationsFromIndexedDB();
+          } catch (clearError) {
+            console.log("Error clearing IndexedDB:", clearError);
+          }
         }
       } catch (error) {
-        console.log("IndexedDB error:", error);
+        console.log("IndexedDB access failed, using localStorage only:", error);
       }
 
       const unreadCount = notifications.filter(
         (n: Notification) => !n.read,
       ).length;
-      console.log("Final unread count:", unreadCount);
-
       set({ notifications, unreadCount });
     } catch (error) {
       console.error("Error loading notifications:", error);
+      set({ notifications: [], unreadCount: 0 });
     }
   },
-
   setUnreadCount: (count) => set({ unreadCount: count }),
 }));
