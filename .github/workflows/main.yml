@@ -330,7 +330,7 @@ jobs:
           path: devops-ci
 
       - name: Setup kubectl
-        uses: cloudops-one/setup-kubectl@v1
+        uses: cloudops-one/setup-kubectl@main
         with:
           kubeconfig: ${{ secrets.KUBECONFIG }}
 
