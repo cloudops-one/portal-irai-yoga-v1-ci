@@ -195,6 +195,7 @@ jobs:
           node-version: '20'
           skip-husky: true
           generate-lockfile: true
+          environment: ${{ needs.validate-branch.outputs.environment }}
 
   docker-build:
     needs: [validate-branch, react-build]
