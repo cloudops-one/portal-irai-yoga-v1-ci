@@ -100,7 +100,7 @@ jobs:
 
   # Trivy filesystem scan runs after gitleaks-scan completes
   trivy-filesystem-scan:
-    needs: [validate-branch, gitleaks-scan]
+    needs: validate-branch
     if: needs.validate-branch.outputs.branch_valid == 'true'
     runs-on: ubuntu-latest
     steps:
@@ -118,7 +118,7 @@ jobs:
 
   # SonarQube code quality scan - centralized approach
   sonarqube-scan:
-    needs: [validate-branch, trivy-filesystem-scan]
+    needs: validate-branch
     if: needs.validate-branch.outputs.branch_valid == 'true'
     runs-on: ubuntu-latest
     steps:
