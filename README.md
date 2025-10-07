@@ -7,7 +7,7 @@ This portal allows administrators to efficiently manage and oversee the activiti
 
 ## 🚀 Features
 
-- 🔥 Responsive Admin Dashboard
+- 🔥 Responsive Admin Dashboard....
 - 🌐 Zustand State Management
 - 🔁 API Integration with Axios
 - 🔥 Retry Mechanism for API Failures
