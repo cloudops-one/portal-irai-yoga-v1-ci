@@ -389,7 +389,7 @@ jobs:
           
       - name: Notify deployment success
         if: success()
-        uses: ./.github/actions/notify
+        uses: cloudops-one/devops-ci/.github/actions/notify@main
         with:
           webhook-url: ${{ steps.webhook.outputs.webhook_url }}
           message: "✅ **DEPLOYMENT SUCCESS**\n🤖 GitHub Actions | ${{ steps.webhook.outputs.env_display }}"
@@ -399,7 +399,7 @@ jobs:
 
       - name: Notify deployment failure
         if: failure()
-        uses: ./.github/actions/notify
+        uses: cloudops-one/devops-ci/.github/actions/notify@main
         with:
           webhook-url: ${{ steps.webhook.outputs.webhook_url }}
           message: "❌ **DEPLOYMENT FAILED**\n🤖 GitHub Actions | ${{ steps.webhook.outputs.env_display }}\n\n🔧 Check GitHub Actions for details"
