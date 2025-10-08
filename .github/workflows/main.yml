@@ -364,12 +364,20 @@ jobs:
           container-name: ${{ needs.validate-branch.outputs.environment == 'live' && 'irai-yoga-v1-admin-live' || needs.validate-branch.outputs.environment == 'stage' && 'irai-yoga-v1-admin-stage' || 'irai-yoga-v1-admin-preview' }}
           deployment-file: ${{ needs.validate-branch.outputs.environment == 'live' && 'devops-ci/k8s/live/irai-yoga-v1-admin/deployment.yaml' || needs.validate-branch.outputs.environment == 'stage' && 'devops-ci/k8s/stage/irai-yoga-v1-admin/deployment.yaml' || 'devops-ci/k8s/preview/irai-yoga-v1-admin/deployment.yaml' }}
 
-      # ✅ CENTRALIZED NOTIFICATIONS FOR ADMIN REPOSITORY
+  # ✅ NOTIFICATION JOB - RUNS AS SEPARATE JOB
+  notify-deployment:
+    needs: [deploy, validate-branch]
+    if: needs.validate-branch.outputs.branch_valid == 'true'
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ needs.validate-branch.outputs.environment }}
+    
+    steps:
       - name: Determine webhook URL and deployment details
         id: webhook
         run: |
           if [ "${{ needs.validate-branch.outputs.environment }}" = "preview" ]; then
-            echo "webhook_url=https://cliq.zoho.in/api/v2/channelsbyname/deploymentspreview/message?zapikey=1001.dab87a288ca7ae39ae4e3b1beb1523de.69ac06a7bf55016622e8216f408f7668" >> $GITHUB_OUTPUT
+            echo "webhook_url=${{ secrets.ZOHO_CLIQ_WEBHOOK_PREVIEW }}" >> $GITHUB_OUTPUT
             echo "env_display=Preview 🚀" >> $GITHUB_OUTPUT
           elif [ "${{ needs.validate-branch.outputs.environment }}" = "stage" ]; then
             echo "webhook_url=${{ secrets.ZOHO_CLIQ_WEBHOOK_STAGE }}" >> $GITHUB_OUTPUT
@@ -381,7 +389,7 @@ jobs:
           
       - name: Notify deployment success
         if: success()
-        uses: cloudops-one/devops-ci/.github/actions/notify@main
+        uses: ./.github/actions/notify
         with:
           webhook-url: ${{ steps.webhook.outputs.webhook_url }}
           message: "✅ **DEPLOYMENT SUCCESS**\n🤖 GitHub Actions | ${{ steps.webhook.outputs.env_display }}"
@@ -391,7 +399,7 @@ jobs:
 
       - name: Notify deployment failure
         if: failure()
-        uses: cloudops-one/devops-ci/.github/actions/notify@main
+        uses: ./.github/actions/notify
         with:
           webhook-url: ${{ steps.webhook.outputs.webhook_url }}
           message: "❌ **DEPLOYMENT FAILED**\n🤖 GitHub Actions | ${{ steps.webhook.outputs.env_display }}\n\n🔧 Check GitHub Actions for details"
