@@ -9,7 +9,12 @@ useDefault = true
 [allowlist]
 # Allow common false-positives (e.g. Firebase client-side API keys)
 regexes = [
-  '''AIza[0-9A-Za-z_-]{35}'''  # Firebase client API keys (public by design)
+  '''AIza[0-9A-Za-z_-]{35}''',  # Firebase client API keys (public by design)
+  '''environment:''',           # GitHub Actions environment keyword
+  '''(preview|stage|live)''',   # Environment values
+  '''needs\..*\.outputs\..*''', # GitHub context variables
+  '''\${{ \s*secrets\.[A-Z_]+ \s*}}''', # GitHub secrets references
+  '''cliq\.zoho\.in/.*'''       # Zoho Cliq webhook URLs
 ]
  
 # If a secret already exists in history but is safe, add commit hashes here:
