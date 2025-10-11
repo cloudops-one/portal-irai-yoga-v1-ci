@@ -19,6 +19,7 @@ jobs:
       docker_tag: ${{ steps.env.outputs.docker_tag }}
       branch_valid: ${{ steps.validation.outputs.valid }}
       domain: ${{ steps.domain.outputs.domain }}
+      branch_name: ${{ steps.sanitize-branch.outputs.branch_name }}
     steps:
       - name: Checkout code
         uses: cloudops-one/checkout@v4
@@ -39,6 +40,17 @@ jobs:
             SANITIZED_BRANCH=$(echo "$BRANCH_NAME" | sed 's/[^a-zA-Z0-9-]/-/g' | tr '[:upper:]' '[:lower:]')
             echo "docker_tag=$SANITIZED_BRANCH" >> $GITHUB_OUTPUT
           fi
+          
+      - name: Sanitize branch name
+        id: sanitize-branch
+        run: |
+          BRANCH_NAME="${GITHUB_REF#refs/heads/}"
+          SANITIZED_BRANCH=$(echo "$BRANCH_NAME" | sed 's/[^a-zA-Z0-9-]/-/g' | tr '[:upper:]' '[:lower:]' | cut -c 1-53)
+          SANITIZED_BRANCH=$(echo "$SANITIZED_BRANCH" | sed 's/^-*//; s/-*$//')
+          if [ -z "$SANITIZED_BRANCH" ]; then
+            SANITIZED_BRANCH="preview-branch"
+          fi
+          echo "branch_name=$SANITIZED_BRANCH" >> $GITHUB_OUTPUT
           
       - name: Determine domain
         id: domain
@@ -339,6 +351,7 @@ jobs:
           path: devops-ci
 
       - name: Update image tag in deployment file
+        shell: bash
         run: |
           # Get the deployment file path based on environment
           if [[ "${{ needs.validate-branch.outputs.environment }}" == "live" ]]; then
@@ -359,20 +372,41 @@ jobs:
           echo "Updated deployment file content:"
           grep -n "image:" "$DEPLOYMENT_FILE"
 
-      - name: Deploy Ingress (Preview only)
+      # ✅ ADDED: Service Deployment (Missing from admin)
+      - name: Deploy Service and Deployment (Preview only)
         if: needs.validate-branch.outputs.environment == 'preview'
-        uses: ./.github/actions/k8s-ingress-deployment
+        uses: cloudops-one/devops-ci/.github/actions/k8s-service-deployment@main
         with:
           do-token: ${{ secrets.DO_API_TOKEN }}
           cluster-name: "k8s"
           namespace: irai-yoga-v1-preview
           project-type: "admin"
-          preview-domain: ${{ needs.validate-branch.outputs.domain }}
-          # ✅ ADDED AWS CREDENTIALS FOR DNS CREATION
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
-          aws-hosted-zone-id: ${{ secrets.AWS_HOSTED_ZONE_ID }}
+          branch-name: ${{ needs.validate-branch.outputs.branch_name }}
+          port: "80"
+          target-port: "80"
+
+      # ✅ ADDED: Dynamic Deployment Configuration (Missing from admin)
+      - name: Update deployment placeholders (Preview only)
+        if: needs.validate-branch.outputs.environment == 'preview'
+        shell: bash
+        run: |
+          DEPLOYMENT_FILE="devops-ci/k8s/preview/irai-yoga-v1-admin/deployment.yaml"
+          SANITIZED_BRANCH="${{ needs.validate-branch.outputs.branch_name }}"
+          DEPLOYMENT_NAME="${SANITIZED_BRANCH}-admin-deployment"
+          SELECTOR_APP="${SANITIZED_BRANCH}-admin"
+          CONTAINER_NAME="${SANITIZED_BRANCH}-admin-container"
+          
+          echo "🔄 Updating deployment placeholders in: $DEPLOYMENT_FILE"
+          echo "   Deployment Name: $DEPLOYMENT_NAME"
+          echo "   Selector App: $SELECTOR_APP"
+          echo "   Container Name: $CONTAINER_NAME"
+          
+          # Update placeholders
+          sed -i "s|DEPLOYMENT_NAME_PLACEHOLDER|$DEPLOYMENT_NAME|g" "$DEPLOYMENT_FILE"
+          sed -i "s|SELECTOR_APP_PLACEHOLDER|$SELECTOR_APP|g" "$DEPLOYMENT_FILE"
+          sed -i "s|ADMIN_CONTAINER_PLACEHOLDER|$CONTAINER_NAME|g" "$DEPLOYMENT_FILE"
+          
+          echo "✅ Deployment file updated"
 
       - name: Deploy to Kubernetes
         uses: cloudops-one/devops-ci/.github/actions/k8s-deployment@main
@@ -381,6 +415,23 @@ jobs:
           cluster-name: "k8s"
           namespace: ${{ needs.validate-branch.outputs.environment == 'live' && 'irai-yoga-v1-live' || needs.validate-branch.outputs.environment == 'stage' && 'irai-yoga-v1-stage' || 'irai-yoga-v1-preview' }}
           deployment-file: ${{ needs.validate-branch.outputs.environment == 'live' && 'devops-ci/k8s/live/irai-yoga-v1-admin/deployment.yaml' || needs.validate-branch.outputs.environment == 'stage' && 'devops-ci/k8s/stage/irai-yoga-v1-admin/deployment.yaml' || 'devops-ci/k8s/preview/irai-yoga-v1-admin/deployment.yaml' }}
+
+      # ✅ UPDATED: Now uses centralized action like server
+      - name: Deploy Ingress and Create DNS (Preview only)
+        if: needs.validate-branch.outputs.environment == 'preview'
+        uses: cloudops-one/devops-ci/.github/actions/k8s-ingress-deployment@main
+        with:
+          do-token: ${{ secrets.DO_API_TOKEN }}
+          cluster-name: "k8s"
+          namespace: irai-yoga-v1-preview
+          project-type: "admin"
+          preview-domain: ${{ needs.validate-branch.outputs.domain }}
+          branch-name: ${{ needs.validate-branch.outputs.branch_name }}
+          # ✅ UPDATED: Use same secret names as server for consistency
+          aws-access-key-id: ${{ secrets.ROUTE53_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.ROUTE53_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.ROUTE53_REGION }}
+          aws-hosted-zone-id: ${{ secrets.ROUTE53_HOSTED_ZONE_ID }}
 
   # ✅ NOTIFICATION JOB - RUNS AS SEPARATE JOB
   notify-deployment:
